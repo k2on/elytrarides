@@ -1,0 +1,9 @@
+mutation UpdateEventDrivers($phones: [Phone!]!, $idEvent: Uuid!) {
+    orgs {
+        updateEventDrivers(
+            phones: $phones,
+            idEvent: $idEvent,
+        ) { phone }
+    }
+}
+

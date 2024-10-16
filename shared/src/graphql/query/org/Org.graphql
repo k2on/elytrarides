@@ -1,0 +1,35 @@
+query GetOrg($id: Uuid!) {
+  orgs {
+    get(id: $id) {
+      id
+      label
+      bio
+      locations {
+          label
+          id
+      }
+      memberships {
+          user {
+              name
+              phone
+          }
+          isDriver
+      }
+      vehicles {
+          id
+          make
+          model
+          color
+          license
+          capacity
+      }
+      college {
+        id
+        logoUrl
+        name
+        locationLat
+        locationLng
+      }
+    }
+  }
+}

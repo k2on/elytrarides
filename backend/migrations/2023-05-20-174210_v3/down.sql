@@ -1,0 +1,10 @@
+ALTER TABLE reservations
+ADD COLUMN location_lat DOUBLE PRECISION NOT NULL,
+ADD COLUMN location_lng DOUBLE PRECISION NOT NULL,
+ADD COLUMN driver_connection_made_at INT,
+ADD COLUMN address TEXT NOT NULL,
+ADD COLUMN duration INT NOT NULL,
+ADD COLUMN is_collected BOOLEAN DEFAULT FALSE NOT NULL,
+ADD COLUMN collected_at INT,
+DROP COLUMN stops,
+DROP COLUMN is_dropoff;

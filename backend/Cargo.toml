@@ -1,0 +1,42 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.3.0"
+dotenv = "0.15.0"
+diesel = { version = "=2.0.3", features = ["postgres", "r2d2", "uuid"] }
+serde = {version = "1.0.152", features = ["derive"]}
+r2d2 = "0.8.10"
+actix = "0.13.0"
+reqwest = {version = "0.11.14", features = ["json"]}
+jsonwebtoken = "8.2.0"
+chrono = { version = "0.4.23", features = ["serde"] }
+actix-cors = "0.6.4"
+env_logger = "0.10.0"
+rand = "0.8.5"
+google_maps = "3.1.1"
+kv = { version = "0.24.0", features = ["json-value"]}
+futures = { version = "0.3" }
+serde_json = "1.0.96"
+actix-multipart = "0.6.0"
+sanitize-filename = "0.4.0"
+uuid = { version = "1.4.1", features = ["v4", "serde"] }
+juniper = { git = "https://github.com/graphql-rust/juniper", rev = "a297b9b", package = "juniper" }
+juniper_actix = { git = "https://github.com/graphql-rust/juniper", rev = "a297b9b", package = "juniper_actix", features = ["subscriptions"] }
+juniper_graphql_ws = { git = "https://github.com/graphql-rust/juniper", rev = "a297b9b", package = "juniper_graphql_ws" }
+juniper_subscriptions = { git = "https://github.com/graphql-rust/juniper", rev = "a297b9b", package = "juniper_subscriptions" }
+actix-service = "2.0.2"
+thiserror = "1.0.44"
+regex = "1.9.1"
+async-stream = "0.3.5"
+tokio = "1.29.1"
+redis = { version = "0.23.0", features = ["tokio-comp"] }
+log = "0.4.19"
+async-trait = "0.1.74"
+async-recursion = "1.0.5"
+serde_with = { version = "3.4.0", features = ["chrono_0_4"] }
+paste = "1.0.14"
+url = "2.5.0"
+itertools = "0.12.1"

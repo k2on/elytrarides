@@ -1,0 +1,39 @@
+query GetOrgMembersDrivers($id: Uuid!) {
+  orgs {
+    get(id: $id) {
+      groups {
+          id
+          label
+          color
+      }
+      invites {
+          id
+          createdAt
+      }
+      memberships {
+        recentDrive {
+            event {
+                name
+                timeStart
+            }
+        }
+        totalDrives
+        user {
+            name
+            imageUrl
+            phone
+        }
+        groups {
+            group {
+                id
+                label
+                color
+            }
+        }
+        isAdmin
+        isDriver
+      }
+    }
+  }
+}
+

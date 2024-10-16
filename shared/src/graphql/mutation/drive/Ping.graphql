@@ -1,0 +1,7 @@
+mutation DriverPing($idEvent: Uuid!, $idDriver: Int!, $location: FormLatLng!) {
+    drivers {
+        ping(idEvent: $idEvent, idDriver: $idDriver, location: $location) {
+            ...DriverStrategyParts
+        }
+    }
+}

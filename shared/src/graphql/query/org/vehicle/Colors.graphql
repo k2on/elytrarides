@@ -1,0 +1,6 @@
+query GetVehicleColors($year: String!, $make: String!, $model: String!) {
+  vehicles {
+    colors(year: $year, make: $make, model: $model)
+  }
+}
+

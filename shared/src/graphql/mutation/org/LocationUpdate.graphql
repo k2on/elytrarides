@@ -1,0 +1,9 @@
+mutation UpdateLocation($idOrg: Uuid!, $idLocation: Uuid!, $form: FormLocation!) {
+    orgs {
+        updateLocation(
+            idLocation: $idLocation,
+            idOrg: $idOrg,
+            form: $form,
+        ) { id }
+    }
+}

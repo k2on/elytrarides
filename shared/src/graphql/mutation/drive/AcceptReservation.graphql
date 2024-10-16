@@ -1,0 +1,7 @@
+mutation AcceptReservation($idDriver: Int!, $idReservation: Uuid!) {
+    drivers {
+        acceptReservation(idDriver: $idDriver, idReservation: $idReservation) {
+            ...DriverStrategyParts
+        }
+    }
+}

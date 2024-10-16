@@ -1,0 +1,8 @@
+mutation UpdateOrg($idOrg: Uuid!, $form: FormOrganization!) {
+    orgs {
+        update(
+            idOrg: $idOrg,
+            form: $form,
+        ) { id }
+    }
+}

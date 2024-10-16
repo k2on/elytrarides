@@ -1,0 +1,32 @@
+query GetEventForDriver($id: Uuid!) {
+    events {
+        get(id: $id) {
+            id
+            idOrg
+            name
+            bio
+            imageUrl
+            timeStart
+            timeEnd
+            reservationsStart
+            publishedAt
+            location {
+                id
+                label
+                locationLat
+                locationLng
+            }
+            drivers {
+                id
+                phone
+                vehicle {
+                    id
+                    color
+                    make
+                    model
+                    imageUrl
+                }
+            }
+        }
+    }
+}

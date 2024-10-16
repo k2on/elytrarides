@@ -1,0 +1,18 @@
+fragment DriverStrategyParts on DriverStrategyEstimations {
+    pickedUp
+    dest {
+        ...StopParts
+    }
+    queue {
+        ...StopParts
+    }
+    reservations {
+        id
+        reserver {
+            phone
+            name
+            imageUrl
+        }
+
+    }
+}

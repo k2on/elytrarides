@@ -1,0 +1,7 @@
+mutation ReservationGiveCancelReason($id: Uuid!, $reason: Int!) {
+    reservations {
+        giveCancelReason(id: $id, reason: $reason) {
+            id
+        }
+    }
+}

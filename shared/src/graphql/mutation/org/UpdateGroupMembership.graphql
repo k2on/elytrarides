@@ -1,0 +1,11 @@
+mutation UpdateGroupMembership($idOrg: Uuid!, $idGroup: Uuid!, $phone: String!, $isRemoved: Boolean!) {
+    orgs {
+        updateGroupMember(
+            idOrg: $idOrg,
+            idGroup: $idGroup,
+            phone: $phone,
+            isRemoved: $isRemoved,
+        ) { idGroup }
+    }
+}
+

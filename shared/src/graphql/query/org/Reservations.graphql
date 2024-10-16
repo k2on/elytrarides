@@ -1,0 +1,16 @@
+query GetOrgReservations($id: Uuid!) {
+  orgs {
+    get(id: $id) {
+      events {
+          reservations {
+              stops {
+                  lat
+                  lng
+              }
+          }
+      }
+    }
+  }
+}
+
+

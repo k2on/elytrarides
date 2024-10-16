@@ -1,0 +1,48 @@
+ALTER TABLE locations DROP COLUMN id;
+ALTER TABLE locations ADD COLUMN id SERIAL PRIMARY KEY;
+
+ALTER TABLE locations DROP COLUMN id_org;
+ALTER TABLE locations ADD COLUMN org_id INTEGER;
+
+ALTER TABLE locations DROP COLUMN obsolete_at;
+
+ALTER TABLE events DROP COLUMN id_location;
+ALTER TABLE events ADD COLUMN id_location INTEGER;
+
+ALTER TABLE events DROP COLUMN id_org;
+ALTER TABLE events ADD COLUMN id_org INTEGER;
+
+ALTER TABLE events DROP COLUMN obsolete_at;
+ALTER TABLE events DROP COLUMN published_at;
+
+ALTER TABLE events DROP COLUMN id;
+ALTER TABLE events ADD COLUMN code TEXT PRIMARY KEY;
+
+ALTER TABLE orgs DROP COLUMN id;
+ALTER TABLE orgs ADD COLUMN id SERIAL PRIMARY KEY;
+
+ALTER TABLE members DROP COLUMN id_org;
+ALTER TABLE members ADD COLUMN id_org INTEGER;
+ALTER TABLE members ADD CONSTRAINT id_org_phone_unique UNIQUE (id_org, phone);
+
+ALTER TABLE vehicles DROP COLUMN id;
+ALTER TABLE vehicles ADD COLUMN id SERIAL PRIMARY KEY;
+
+ALTER TABLE vehicles DROP COLUMN id_org;
+ALTER TABLE vehicles ADD COLUMN id_org INTEGER;
+
+ALTER TABLE vehicles DROP COLUMN obsolete_at;
+ALTER TABLE vehicles ADD COLUMN is_removed BOOLEAN NOT NULL;
+
+ALTER TABLE event_drivers DROP CONSTRAINT id_event_phone_unique;
+ALTER TABLE event_drivers DROP COLUMN id_event;
+ALTER TABLE event_drivers ADD COLUMN code TEXT NOT NULL;
+ALTER TABLE event_drivers DROP COLUMN obsolete_at;
+
+ALTER TABLE event_drivers DROP COLUMN id_vehicle;
+ALTER TABLE event_drivers ADD COLUMN id_vehicle INTEGER NOT NULL;
+
+ALTER TABLE reservations DROP COLUMN id;
+ALTER TABLE reservations ADD COLUMN id SERIAL PRIMARY KEY;
+ALTER TABLE reservations DROP COLUMN id_event;
+ALTER TABLE reservations ADD COLUMN id_event INTEGER NOT NULL;

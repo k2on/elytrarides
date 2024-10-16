@@ -1,0 +1,8 @@
+mutation SMSOpt($optIn: Boolean!) {
+    users {
+        meSmsOpt(optIn: $optIn) {
+            phone
+        }
+    }
+}
+

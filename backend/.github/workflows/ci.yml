@@ -1,0 +1,72 @@
+name: Rust Test With PostgreSQL
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_DB: dev
+          POSTGRES_HOST_AUTH_METHOD: trust # allows password-less connections
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Cache cargo registry
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install Diesel CLI
+      run: |
+        if [ -x "$HOME/.cargo/bin/diesel" ]; then
+          echo "Diesel CLI is cached"
+        else
+          cargo install diesel_cli --no-default-features --features postgres
+        fi
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    # Set up the DATABASE_URL environment variable
+    - name: Configure environment
+      run: echo "DATABASE_URL=postgresql://admin@localhost:5432/dev" >> $GITHUB_ENV
+
+    # Wait for PostgreSQL to become ready
+    - name: Check PostgreSQL readiness
+      run: |
+        echo "Waiting for PostgreSQL to become ready..."
+        until pg_isready -h localhost -p 5432 -U admin; do
+          sleep 1
+        done
+        echo "PostgreSQL is ready!"
+
+    - name: Run Diesel migrations
+      run: diesel migration run
+
+    - name: Run tests
+      run: cargo test -- --test-threads=1
+

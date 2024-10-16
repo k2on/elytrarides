@@ -1,0 +1,6 @@
+ALTER TABLE reservations
+ADD COLUMN est_pickup INT NOT NULL DEFAULT 0,
+ADD COLUMN est_dropoff INT NOT NULL DEFAULT 0,
+ADD COLUMN rating INT,
+ADD COLUMN feedback INT,
+ADD COLUMN rated_at INT;

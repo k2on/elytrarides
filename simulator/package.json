@@ -1,0 +1,25 @@
+{
+  "name": "simulator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@tanstack/react-query": "^4.32.6",
+    "@tanstack/react-query-devtools": "^4.32.6",
+    "graphql": "^16.8.1",
+    "graphql-request": "^6.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "subscriptions-transport-ws": "^0.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.6",
+    "@types/react": "^18.2.48",
+    "tsc-watch": "^6.0.4",
+    "typescript": "^5.3.3"
+  },
+  "scripts": {
+    "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
+    "sync": "cp ../shared/src/generated/graphql.ts ./src/generated.ts"
+  }
+}

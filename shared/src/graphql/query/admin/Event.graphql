@@ -1,0 +1,83 @@
+query GetAdminEvent($id: Uuid!) {
+    events {
+        get(id: $id) {
+            id
+            idOrg
+            name
+            bio
+            imageUrl
+            timeStart
+            timeEnd
+            reservationsStart
+            publishedAt
+            location {
+                id
+                label
+                locationLat
+                locationLng
+            }
+            reservations {
+                id
+                status
+                madeAt
+                cancelledAt
+                idDriver
+                driverAssignedAt
+                passengerCount
+                reserver {
+                    phone
+                    name
+                }
+                stops {
+                    completeAt
+                    stopOrder
+                    eta
+                    lat
+                    lng
+                    addressMain
+                    addressSub
+                    driverArrivedAt
+                    completeAt
+                }
+                rating
+                feedback {
+                    isLongWait
+                    isEtaAccuracy
+                    isPickupSpot
+                    isDriverNeverArrived
+                }
+                ratedAt
+                cancelReason
+            }
+            drivers {
+                id
+                phone
+                user {
+                    name
+                    imageUrl
+                }
+                vehicle {
+                    id
+                    imageUrl
+                    make
+                    model
+                    color
+                }
+                
+            }
+            strategy {
+                drivers {
+                    driver {
+                        id
+                    }
+                    dest {
+                        ...StopParts
+                    }
+                    queue {
+                        ...StopParts
+                    }
+                }
+            }
+        }
+    }
+}

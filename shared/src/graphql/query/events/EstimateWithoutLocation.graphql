@@ -1,0 +1,14 @@
+query GetEventEstimateWithoutLocation($id: Uuid!) {
+    events {
+        get(id: $id) {
+            estimateWithoutLocation {
+                stopEtas {
+                    eta
+                }
+                queuePosition
+            }
+        }
+    }
+}
+
+

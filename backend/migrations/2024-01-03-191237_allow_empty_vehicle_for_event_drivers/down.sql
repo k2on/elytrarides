@@ -1,0 +1,3 @@
+ALTER TABLE event_drivers
+ALTER COLUMN id_vehicle TYPE UUID,
+ALTER COLUMN id_vehicle SET NOT NULL;

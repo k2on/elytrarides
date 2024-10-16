@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Elytra",
+    "slug": "elytra",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111111"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "to.elytra.elytra",
+      "infoPlist": {
+         "UIBackgroundModes": ["location", "fetch"],
+         "NSLocationWhenInUseUsageDescription": "Allow Elytra to use your location to communicate between drivers and riders.",
+         "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Elytra to use your location to communicate between drivers and riders.",
+         "NSLocationAlwaysUsageDescription": "Allow Elytra to use your location to communicate between drivers and riders.",
+         "NSCameraUsageDescription": "Allow Elytra to use your camera for your profile picture."
+      },
+      "buildNumber": "3"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "to.elytra.elytra"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

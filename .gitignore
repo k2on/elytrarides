@@ -1,0 +1,7 @@
+/target
+/kv*
+**/.env
+
+node_modules/
+.DS_Store
+*/src/shared/

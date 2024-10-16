@@ -1,0 +1,3 @@
+ALTER TABLE reservations
+ADD COLUMN address TEXT NOT NULL,
+ADD COLUMN duration INT NOT NULL;

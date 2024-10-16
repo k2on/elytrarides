@@ -1,0 +1,8 @@
+mutation ConfirmArrival($idEvent: Uuid!, $idDriver: Int!) {
+    drivers {
+        confirmArrival(idEvent: $idEvent, idDriver: $idDriver) {
+            ...DriverStrategyParts
+        }
+    }
+}
+
