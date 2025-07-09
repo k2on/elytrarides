@@ -2,6 +2,8 @@
 
 Mobile and Web Application for a Private Carpool System
 
+<img height="500px" src="https://raw.githubusercontent.com/elytrarides/dotcom/refs/heads/main/landing.png" />
+
 Server:
 - Rust
 - GraphQL
@@ -21,4 +23,3 @@ Client:
 - Google Maps API
 - React Query Hooks generated from backend and shared between web and mobile
 
-<img height="500px" src="https://raw.githubusercontent.com/elytrarides/dotcom/refs/heads/main/landing.png" />
