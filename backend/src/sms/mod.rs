@@ -11,11 +11,11 @@ pub struct ClientTwilio {
     account_sid: String,
     auth_token: String,
     reqwest_client: Client,
+    service_id_verfiy: String,
+    service_id_sms: String,
+    messaging_service_id: String,
 }
 
-const SERVICE_ID_VERFIY: &str = "";
-const SERVICE_ID_SMS: &str = "";
-const MESSAGING_SERVICE_ID: &str = "";
 const URL_BASE_VERIFY: &str = "https://verify.twilio.com/v2/";
 const URL_BASE_SMS: &str = "https://api.twilio.com/2010-04-01/";
 const ENDPOINT_VERIFICATIONS: &str = "Verifications";
@@ -47,11 +47,19 @@ pub enum ErrorTwillio {
 
 
 impl ClientTwilio {
+
     pub fn new(account_sid: &str, auth_token: &str) -> Self {
         let reqwest_client = Client::new();
+
+
+
         ClientTwilio {
             account_sid: account_sid.to_owned(),
             auth_token: auth_token.to_owned(),
+            service_id_verfiy: std::env::var("TWILIO_SERVICE_ID_VERIFY").expect("TWILIO_SERVICE_ID_VERIFY must be set"),
+            service_id_sms: std::env::var("TWILIO_SERVICE_ID_SMS").expect("TWILIO_SERVICE_ID_SMS must be set"),
+            messaging_service_id: std::env::var("TWILIO_MESSAGING_SERVICE_ID").expect("TWILIO_MESSAGING_SERVICE_ID must be set"),
+
             reqwest_client,
         }
     }
@@ -62,9 +70,9 @@ impl ClientTwilio {
         if is_mock { return Ok(SMSResponse {status: "ok".to_owned()}); }
         let phone = to.clone().to_string();
 
-        let url = format!("{}Accounts/{}/Messages.json", URL_BASE_SMS, SERVICE_ID_SMS);
+        let url = format!("{}Accounts/{}/Messages.json", URL_BASE_SMS, self.service_id_sms);
         let params = vec![
-            ("MessagingServiceSid", MESSAGING_SERVICE_ID),
+            ("MessagingServiceSid", self.messaging_service_id.as_str()),
             ("To", &phone),
             ("Body", message),
         ];
@@ -98,7 +106,7 @@ impl ClientTwilio {
     where
         T: for<'de> Deserialize<'de>,
     {
-        let url_service = format!("{}Services/{}/", URL_BASE_VERIFY, SERVICE_ID_VERFIY);
+        let url_service = format!("{}Services/{}/", URL_BASE_VERIFY, self.service_id_verfiy);
         let url = url_service + endpoint;
         match self
             .reqwest_client

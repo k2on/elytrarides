@@ -10,7 +10,7 @@ impl AuthMutation {
     }
 }
 
-const MOCK_USER_CODE: &str = "000000";
+const MOCK_USER_CODE: &str = "316316";
 
 #[juniper::graphql_object(Context = Context)]
 impl AuthMutation {

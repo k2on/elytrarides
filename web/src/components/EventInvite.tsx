@@ -43,7 +43,7 @@ export default function EventInvite({ event }: InviteEventProps) {
     
     const showMemberLogin = !isEnded && !isStarted;
 
-    const imageUrl = "https://images-lebtivity.s3.amazonaws.com/content/versions/72894/1900-1267-0-0/wine_in_night.jpg";
+    const imageUrl = "https://pastorjeffdavis.com/wp-content/uploads/2020/07/oakwood.jpeg";
 
     const start = new Date(event.timeStart * 1000);
     const startPublic = new Date(event.reservationsStart * 1000);

@@ -8,7 +8,7 @@ export const URL_GRAPHQL = process.env.NODE_ENV === "production" ? "https://api.
 // export const URL_GRAPHQL_WS = process.env.NODE_ENV === "production" ? "wss://api.elytra.to/subscriptions" : "ws://localhost:8080/subscriptions"
 export const URL_GRAPHQL_WS = process.env.NODE_ENV === "production" ? "wss://api.elytra.to/subscriptions" : `ws://${LOCAL_IP}:8080/subscriptions`
 
-export const googleMapsApiKey = "";
+export const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 export const COLOR_PURPLE_500 = "#a855f7";
 export const COLOR_GRAY_200 = "#e5e7eb";

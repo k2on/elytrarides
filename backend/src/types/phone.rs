@@ -19,7 +19,7 @@ pub struct Phone {
     number: String,
 }
 
-const MOCK_USER_PHONE_PREFIX: &str = "+1000000";
+const MOCK_USER_PHONE_PREFIX: &str = "+1800200";
 
 impl Phone {
     pub fn new(number: &str) -> Result<Phone, &'static str> {

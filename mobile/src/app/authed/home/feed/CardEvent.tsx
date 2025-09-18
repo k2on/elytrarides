@@ -19,8 +19,7 @@ import { AuthedParamList } from "@/app/Authed";
 import { AlertTriangleIcon, CalendarIcon, CarIcon, ShareIcon } from "lucide-react-native";
 import { formatTime } from "../../drive/util";
 
-const URI_DEFAULT =
-    "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fget.pxhere.com%2Fphoto%2Fwine-night-restaurant-bar-celebration-meal-lighting-festive-cheers-festival-glasses-party-chandelier-nightclub-abut-wine-glasses-wedding-reception-964600.jpg&f=1&nofb=1&ipt=b7c498e7cc29b1264ee8de7ac65307aa8050c203cdc8a638e3ccba60968bae17&ipo=images";
+const URI_DEFAULT = "https://pastorjeffdavis.com/wp-content/uploads/2020/07/oakwood.jpeg";
 
 export type GetMeQueryEvent =
     GetMeQuery["users"]["me"]["memberships"][0]["org"]["events"][0];

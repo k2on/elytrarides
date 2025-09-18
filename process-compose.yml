@@ -1,0 +1,67 @@
+version: "0.5"
+
+log_location: .logs
+log_level: info
+
+settings:
+  server:
+    port: 0
+
+processes:
+  db:
+    command: |
+      export PGDATA="./postgres_data"
+      
+      # Initialize if needed
+      if [ ! -d "$PGDATA" ]; then
+        initdb --auth=trust --no-locale --encoding=UTF8
+      fi
+      
+      # Start PostgreSQL in foreground
+      postgres -D "$PGDATA" -k /tmp -p 5432
+    readiness_probe:
+      exec:
+        command: "pg_isready -h localhost -p 5432 -U postgres"
+      initial_delay_seconds: 2
+      period_seconds: 1
+
+  migrate:
+    command: |
+      # Create database if it doesn't exist
+      createdb -h localhost -p 5432 -U postgres elytra_rides 2>/dev/null || true
+
+      # Run diesel migrations
+      cd backend && diesel migration run
+
+      echo "Inserting seed data..."
+      psql -h localhost -p 5432 -U postgres -d elytra_rides<seed.sql
+
+      echo "Migration and seeding complete!"
+    depends_on:
+      db:
+        condition: process_healthy
+    environment:
+      - "DATABASE_URL=postgresql://postgres@localhost:5432/elytra_rides"
+
+  backend:
+    command: "RUSTFLAGS='-Awarnings' cargo run"
+    working_dir: "./backend"
+    depends_on:
+      migrate:
+        condition: process_completed_successfully
+    environment:
+      - "DATABASE_URL=postgresql://postgres@localhost:5432/elytra_rides"
+      - "RUST_LOG=debug"
+    restart: "on_failure"
+
+  shared:
+    command: "yarn"
+    working_dir: "./shared"
+
+
+  web:
+    command: "yarn && yarn sync && yarn dev"
+    working_dir: "./web"
+    depends_on:
+      shared:
+        condition: process_completed_successfully
