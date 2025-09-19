@@ -146,7 +146,7 @@ export default function Account() {
             const json = await response.json() as MediaResponse;
             setProfileImage(json.id);
             setOpen(false);
-            const base = process.env.NODE_ENV == "production" ? "https://elytra.to/images/" : "http://localhost:8000/images/";
+            const base = process.env.NODE_ENV == "production" ? "https://ride.koon.us/images/" : "http://localhost:8000/images/";
             const imgUrl = base + json.id + ".jpg";
             setImageUrl(imgUrl)
         } catch (e) {

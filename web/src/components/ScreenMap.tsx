@@ -47,7 +47,7 @@ import { getPickupTime } from "@/lib";
 
 export const GOOGLE_MAPS_LIBRARIES: Libraries = ["geometry"];
 
-const markerUrl = `https://elytra.to/car.png`
+const markerUrl = `https://ride.koon.us/car.png`
 const spriteSize = 64;
 
 interface MapMarker {

@@ -66,52 +66,6 @@
                   ${pkgs.nodePackages_latest.pnpm}/bin/pnpm run start" > $exe
             '';
           };
-
-
-
-          # web = pkgs.mkYarnPackage rec {
-          #   pname = "elytra-rides-web";
-          #   version = "0.1.0";
-          #   src = ./web;
-          #
-          #   packageJSON = ./web/package.json;
-          #
-          #
-          #
-          #
-          #
-          #   offlineCache = pkgs.fetchYarnDeps {
-          #     yarnLock = "${src}/yarn.lock";
-          #     hash = "sha256-522plD7sn4N3Z6ntLG05MGJZEQ45PPCNmdxQXM/DnZA=";
-          #   };
-          #
-          #   buildPhase = ''
-          #     yarn --offline build
-          #   '';
-          #
-          #   installPhase = ''
-          #     mkdir -p $out
-          #     cp -r .next $out/
-          #     cp -r public $out/ 2>/dev/null || true
-          #     cp package.json $out/
-          #     cp -r node_modules $out/
-          #   '';
-          #
-          #   distPhase = true;
-          #
-          #
-          #   # installPhase = ''
-          #   #   mkdir -p $out
-          #   #   cp -r deps/*/out $out/
-          #   #   cp -r deps/*/.next $out/
-          #   # '';
-          #
-          #   env = {
-          #     BUILD_STANDALONE = "true";
-          #     NODE_ENV = "production";
-          #   };
-          #
-          # };
         };
 
         devShells.default = with pkgs; mkShell {

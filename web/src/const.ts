@@ -2,11 +2,11 @@ const NET_IP = "";
 const USE_LOCAL_HOST = true;
 const LOCAL_IP = USE_LOCAL_HOST ? "127.0.0.1" : NET_IP;
 
-export const URL_UPLOAD = process.env.NODE_ENV === "production" ? "https://api.elytra.to/upload/" : `http://${LOCAL_IP}:8080/upload/`
-export const URL_GRAPHQL = process.env.NODE_ENV === "production" ? "https://api.elytra.to/graphql" : `http://${LOCAL_IP}:8080/graphql`
-// export const URL_GRAPHQL = process.env.NODE_ENV === "production" ? "https://api.elytra.to/graphql" : "http://192.168.0.166:8080/graphql"
-// export const URL_GRAPHQL_WS = process.env.NODE_ENV === "production" ? "wss://api.elytra.to/subscriptions" : "ws://localhost:8080/subscriptions"
-export const URL_GRAPHQL_WS = process.env.NODE_ENV === "production" ? "wss://api.elytra.to/subscriptions" : `ws://${LOCAL_IP}:8080/subscriptions`
+export const URL_UPLOAD = process.env.NODE_ENV === "production" ? "https://api.ride.koon.us/upload/" : `http://${LOCAL_IP}:8080/upload/`
+export const URL_GRAPHQL = process.env.NODE_ENV === "production" ? "https://api.ride.koon.us/graphql" : `http://${LOCAL_IP}:8080/graphql`
+// export const URL_GRAPHQL = process.env.NODE_ENV === "production" ? "https://api.ride.koon.us/graphql" : "http://192.168.0.166:8080/graphql"
+// export const URL_GRAPHQL_WS = process.env.NODE_ENV === "production" ? "wss://api.ride.koon.us/subscriptions" : "ws://localhost:8080/subscriptions"
+export const URL_GRAPHQL_WS = process.env.NODE_ENV === "production" ? "wss://api.ride.koon.us/subscriptions" : `ws://${LOCAL_IP}:8080/subscriptions`
 
 export const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
