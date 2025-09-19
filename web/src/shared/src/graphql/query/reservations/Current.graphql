@@ -1,0 +1,13 @@
+query GetCurrentReservation($idEvent: Uuid!) {
+    reservations {
+        current(idEvent: $idEvent) {
+            ...ReservationParts
+            estimate {
+                queuePosition
+                stopEtas {
+                    eta
+                }
+            }
+        }
+    }
+}

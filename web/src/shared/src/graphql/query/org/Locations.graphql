@@ -1,0 +1,13 @@
+query GetOrgLocations($id: Uuid!) {
+  orgs {
+    get(id: $id) {
+      locations {
+        id
+        label
+        locationLat
+        locationLng
+      }
+    }
+  }
+}
+

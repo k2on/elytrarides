@@ -1,0 +1,9 @@
+mutation UpdateEvent($idOrg: Uuid!, $idEvent: Uuid!, $form: FormEvent!) {
+    orgs {
+        updateEvent(
+            idEvent: $idEvent,
+            idOrg: $idOrg,
+            form: $form,
+        ) { id }
+    }
+}

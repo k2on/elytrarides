@@ -1,0 +1,43 @@
+query GetMe {
+    users {
+        me {
+            phone
+            name
+            imageUrl
+            memberships {
+                isDriver
+                isAdmin
+                org {
+                    id
+                    label
+                    bio
+                    events {
+                        id
+                        idOrg
+                        name
+                        bio
+                        imageUrl
+                        timeStart
+                        timeEnd
+                        reservationsStart
+                        location {
+                            label
+                            locationLat
+                            locationLng
+                        }
+                        drivers {
+                            id
+                            phone
+                            vehicle {
+                                id
+                                color
+                                make
+                                model
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

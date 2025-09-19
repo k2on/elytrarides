@@ -1,0 +1,8 @@
+mutation CancelReservation($id: Uuid!) {
+    reservations {
+        cancel(id: $id) {
+            id
+        }
+    }
+}
+

@@ -1,0 +1,5 @@
+mutation VerifyOTP($phone: Phone!, $code: String!) {
+    auth {
+        verifyOtp(phone: $phone, code: $code)
+    }
+}

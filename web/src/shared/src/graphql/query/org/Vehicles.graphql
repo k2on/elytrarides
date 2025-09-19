@@ -1,0 +1,18 @@
+query GetOrgVehicles($id: Uuid!) {
+  orgs {
+    get(id: $id) {
+      vehicles {
+        id
+        color
+        make
+        model
+        year
+        capacity
+        license
+        imageUrl
+        ownerPhone
+      }
+    }
+  }
+}
+

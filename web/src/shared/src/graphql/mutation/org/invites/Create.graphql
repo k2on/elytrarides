@@ -1,0 +1,9 @@
+mutation InviteCreate($id: Uuid!, $idOrg: Uuid!) {
+    orgs {
+        inviteCreate(
+            id: $id,
+            idOrg: $idOrg
+        ) { id }
+    }
+}
+

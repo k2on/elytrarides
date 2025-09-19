@@ -4,7 +4,6 @@
 
 node_modules/
 .DS_Store
-*/src/shared/
 
 .direnv/
 .logs

@@ -1,0 +1,11 @@
+query GetMeAccount {
+    users {
+        me {
+            name
+            phone
+            imageUrl
+            isOptedInSms
+        }
+    }
+}
+

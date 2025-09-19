@@ -1,5 +1,5 @@
 import "./globals.css";
-import { Inter } from "next/font/google";
+// import { Inter } from "next/font/google";
 import { ReactQueryProvider } from "./ReactQueryProvider";
 import { ReactQueryDevtools } from "@/shared";
 import Script from "next/script";
@@ -8,7 +8,7 @@ import { SkeletonTheme } from "react-loading-skeleton";
 import { Toaster } from "@/components/ui/toaster";
 
 
-const inter = Inter({ subsets: ["latin"] });
+// const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
     title: "Elytra Rides",
@@ -33,7 +33,7 @@ export default async function RootLayout({
 
                           gtag('config', 'G-SQRTJT55VV');`}
                     </Script></>)}
-                    <body className={inter.className} style={{ height: "-webkit-fill-available" }}>
+                    <body className="font-sans" style={{ height: "-webkit-fill-available" }}>
                         {children}
                         <Toaster />
                         <ReactQueryDevtools />

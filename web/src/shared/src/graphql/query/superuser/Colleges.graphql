@@ -1,0 +1,20 @@
+query GetColleges {
+  colleges {
+    all {
+      id
+      name
+      logoUrl
+      locationLat
+      locationLng
+      orgs {
+        id
+        label
+        locations {
+          locationLat
+          locationLng
+        }
+      }
+    }
+  }
+}
+

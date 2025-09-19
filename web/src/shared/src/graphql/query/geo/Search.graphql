@@ -1,0 +1,9 @@
+query GeoSearch($idEvent: Uuid, $query: String!) {
+    geo {
+        search(idEvent: $idEvent, query: $query) {
+            main
+            sub
+            placeId
+        }
+    }
+}

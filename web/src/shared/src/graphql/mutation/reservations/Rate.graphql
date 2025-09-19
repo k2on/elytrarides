@@ -1,0 +1,8 @@
+mutation RateReservation($id: Uuid!, $rating: Int!, $feedback: Int!) {
+    reservations {
+        rate(id: $id, rating: $rating, feedback: $feedback) {
+            id
+        }
+    }
+}
+

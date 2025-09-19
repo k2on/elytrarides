@@ -1,0 +1,8 @@
+mutation InviteRevoke($id: Uuid!) {
+    orgs {
+        inviteRevoke(
+            id: $id,
+        ) { id }
+    }
+}
+

@@ -1,0 +1,25 @@
+subscription SubscribeToReservation($id: Uuid!, $token: String!) {
+    reservation(id: $id, token: $token) {
+        __typename
+        ... on MessageReservationEstimation {
+            estimate {
+                stopEtas {
+                    eta
+                }
+                queuePosition
+            }
+        }
+        ... on MessageDriverLocation {
+            location {
+                lat
+                lng
+            }
+        }
+        ... on MessageReservationUpdate {
+            reservation {
+                ...ReservationParts
+            }
+        }
+    }
+}
+

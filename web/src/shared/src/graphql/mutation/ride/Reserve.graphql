@@ -1,0 +1,14 @@
+mutation Reserve($id: Uuid!, $idEvent: Uuid!, $form: FormReservation!) {
+    reservations {
+        reserve(id: $id, idEvent: $idEvent, form: $form) {
+            ...ReservationParts
+            estimate {
+                stopEtas {
+                    eta
+                }
+                queuePosition
+            }
+        }
+    }
+}
+

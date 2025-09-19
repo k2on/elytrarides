@@ -1,0 +1,25 @@
+query GetAvaliableReservation($id: Uuid!, $idDriver: Int!) {
+    events {
+        get(id: $id) {
+            avaliableReservation(idDriver: $idDriver) {
+                reservation {
+                    id
+                    reserver {
+                        name
+                        imageUrl
+                    }
+                    passengerCount
+                }
+                stops {
+                    eta
+                    stop {
+                        addressMain
+                        addressSub
+                        lat
+                        lng
+                    }
+                }
+            }
+        }
+    }
+}
