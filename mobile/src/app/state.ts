@@ -7,7 +7,7 @@ const NET_IP = "192.168.4.22";
 const USE_LOCAL_HOST = true;
 const LOCAL_IP = USE_LOCAL_HOST ? "127.0.0.1" : NET_IP;
 
-export const URL_PROD = "api.elytra.to/";
+export const URL_PROD = "ride-api.koon.us/";
 // export const URL_DEV = "198.21.254.66:8080/";
 export const URL_DEV = Platform.OS == "android" ? "10.0.2.2:8080/" : LOCAL_IP + ":8080/";
 // export const URL_BASE = process.env.BASE_URL || URL_PROD;
