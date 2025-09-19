@@ -47,7 +47,7 @@
               nodejs_20
               nodePackages_latest.pnpm
             ];
-            npmDepsHash = "sha256-oTUiWRKdYiTvmiwkZeN6EXcXxN0Jp1CcaxlO5PZMF9M=";
+            npmDepsHash = "sha256-HVxTXJJ/w4OQpfAnBgcPiR8y6qrIS0o8Mx3Q8vepLgg=";
             nativeBuildInputs = buildInputs;
             npmFlags = [ "--legacy-peer-deps" ];
 
