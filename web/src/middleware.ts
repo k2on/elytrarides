@@ -8,7 +8,7 @@ export function middleware(request: NextRequest) {
     const isProduction = process.env.NODE_ENV === 'production';
 
     const path = new URL(request.url).pathname;
-    const host = isProduction ? 'elytra.to' : 'localhost:3000'; 
+    const host = isProduction ? 'ride.koon.us' : 'localhost:3000'; 
     const protocol = isProduction ? 'https://' : 'http://';
     const baseURL = protocol + host;
 
