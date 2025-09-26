@@ -36,6 +36,9 @@
               openssl
               postgresql
             ];
+            postInstall = ''
+              cp -r $src/migrations $out/migrations
+            '';
             doCheck = false;
           };
 
@@ -51,7 +54,6 @@
             nativeBuildInputs = buildInputs;
             npmFlags = [ "--legacy-peer-deps" ];
 
-            # inherit pname version buildInputs npmDepsHash nativeBuildInputs;
             src = ./web;
             postInstall = ''
               mkdir -p $out/bin
