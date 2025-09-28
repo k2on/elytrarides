@@ -715,7 +715,7 @@ impl OrgMutation {
 #[doc = "Tells the nextjs server to invalidate the cache for an event."]
 async fn invalidate_frontend_cache(id: Uuid) {
     let client = reqwest::Client::new();
-    let url = format!("http://localhost:3000/api/refresh_event");
+    let url = format!("http://localhost:3007/api/refresh_event"); // TODO: FIX ME
 
     match client
         .post(url)

@@ -53,7 +53,8 @@ export default function EventInvite({ event }: InviteEventProps) {
     const { data } = useGetEventEstimateWithoutLocationQuery(client, { id: event.id }, { enabled: isActive, refetchInterval: 1000 * 30 });
 
     const est = data?.events.get.estimateWithoutLocation;
-    const timeEst = est && Math.round(est.timeEstimate.pickup / 60) + " min wait";
+    const stopsEta = est && est.stopEtas.at(-1)?.eta;
+    const timeEst = stopsEta && Math.round(stopsEta) + " min wait";
 
     useEffect(() => {
         setIsClient(true);
