@@ -1,0 +1,12 @@
+subscription SubscribeToEvent($id: Uuid!, $token: String!) {
+    event(idEvent: $id, token: $token) {
+        __typename
+        ... on MessageDriverLocation {
+            id
+            location {
+                lat
+                lng
+            }
+        }
+    }
+}

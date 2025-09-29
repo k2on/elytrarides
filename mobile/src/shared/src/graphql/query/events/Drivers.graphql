@@ -1,0 +1,23 @@
+query GetDrivers($id: Uuid!) {
+    events {
+        get(id: $id) {
+            drivers {
+                id
+                phone
+                user {
+                    name
+                }
+                idVehicle
+                vehicle {
+                    id
+                    make
+                    model
+                    color
+                    license
+                    capacity
+                }
+            }
+        }
+    }
+}
+

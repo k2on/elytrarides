@@ -4,8 +4,8 @@ query GetOrgReservations($id: Uuid!) {
       events {
           reservations {
               stops {
-                  lat
-                  lng
+                  locationLat
+                  locationLng
               }
           }
       }

@@ -1,7 +1,61 @@
 mutation ConfirmArrival($idEvent: Uuid!, $idDriver: Int!) {
     drivers {
         confirmArrival(idEvent: $idEvent, idDriver: $idDriver) {
-            ...DriverStrategyParts
+            pickedUp
+            dest {
+                __typename
+                ... on DriverStopEstimationEvent {
+                    arrival
+                }
+                ... on DriverStopEstimationReservation {
+                    isDropoff
+                    passengers
+                    location {
+                        address {
+                            main
+                            sub
+                        }
+                        coords {
+                            lat
+                            lng
+                        }
+                    }
+                    reservation {
+                        reserver {
+                            phone
+                            name
+                            imageUrl
+                        }
+                    }
+                }
+            }
+            queue {
+                __typename
+                ... on DriverStopEstimationEvent {
+                    arrival
+                }
+                ... on DriverStopEstimationReservation {
+                    isDropoff
+                    passengers
+                    location {
+                        address {
+                            main
+                            sub
+                        }
+                        coords {
+                            lat
+                            lng
+                        }
+                    }
+                    reservation {
+                        reserver {
+                            phone
+                            name
+                            imageUrl
+                        }
+                    }
+                }
+            }
         }
     }
 }

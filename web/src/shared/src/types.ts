@@ -1,10 +1,4 @@
-import { isObjectType } from "graphql";
 import { GetCurrentReservationQuery, GetEventQuery, LatLng, ReservationEstimate, ReservationMutation } from "./generated/graphql";
-
-export interface ReservationEstimateWithEta {
-    queuePosition: number;
-    stopEtas: Pick<ReservationEstimate["stopEtas"][number], "eta">[]
-}
 
 export enum ReservationType {
     PICKUP,
@@ -45,7 +39,7 @@ export interface StateReserve {
     searchResults: SearchStateResult[];
     isReordering: boolean;
     editingStop: number;
-    estimation: ReservationEstimateWithEta | null;
+    estimation: ReservationEstimate | null;
     confirmPin: ReserveLocation | null;
     passengers: number;
 }
@@ -54,7 +48,7 @@ export interface StateReservation {
     type: RideStepType.RESERVATION
     event: GetEventQuery["events"]["get"];
     reservation: NonNullable<GetCurrentReservationQuery["reservations"]["current"]>;
-    estimation: ReservationEstimateWithEta | null;
+    estimation: ReservationEstimate | null;
     driverLocation: LatLng | null;
     driverLocationLast: LatLng | null;
 }
@@ -80,20 +74,19 @@ export interface SearchStateResult {
 }
 
 function stopsToLocations(stops: NonNullable<GetCurrentReservationQuery["reservations"]["current"]>["stops"]) {
-    return stops.filter(stop => !stop.completeAt).map(stop => ({ main: stop.addressMain, sub: stop.addressSub, placeId: "", location: {lat: stop.lat, lng: stop.lng } }));
+    return stops.filter(stop => !stop.isComplete).map(stop => ({ main: stop.address.main, sub: stop.address.sub, placeId: "", location: {lat: stop.locationLat, lng: stop.locationLng} }));
 }
 
-function makeInitialStateNoEvent(isDropoff: boolean): StateRide {
-    return {
+export function makeInitialState(event: GetEventQuery["events"]["get"] | undefined, reservation: GetCurrentReservationQuery["reservations"]["current"], isDropoff = false): StateRide {
+    return !event
+    ? {
         step: { type: RideStepType.INITIAL },
         locations: [],
         reservationType: isDropoff ? ReservationType.DROPOFF : null,
         shouldCenter: false,
     }
-}
-
-function makeInitialStateReservation(event: GetEventQuery["events"]["get"], reservation: NonNullable<GetCurrentReservationQuery["reservations"]["current"]>): StateRide {
-    return {
+    : reservation
+    ? {
         step: {
             type: RideStepType.RESERVATION,
             event,
@@ -102,27 +95,16 @@ function makeInitialStateReservation(event: GetEventQuery["events"]["get"], rese
             driverLocation: null,
             driverLocationLast: null,
         },
-        reservationType: ReservationType.PICKUP, // remove me
+        reservationType: reservation.isDropoff ? ReservationType.DROPOFF : ReservationType.PICKUP,
         locations: stopsToLocations(reservation.stops),
         shouldCenter: true,
     }
-}
-
-function makeInitialStateReserve(event: GetEventQuery["events"]["get"], isDropoff: boolean): StateRide {
-    return {
+    : {
         step: {...INITIAL_RESERVE_STATE, ...{ event }},
         locations: [],
-        reservationType: isDropoff ? ReservationType.DROPOFF : null, // remove me
+        reservationType: isDropoff ? ReservationType.DROPOFF : null,
         shouldCenter: false,
-    }
-}
-
-export function makeInitialState(event: GetEventQuery["events"]["get"] | undefined, reservation: GetCurrentReservationQuery["reservations"]["current"], isDropoff = false): StateRide {
-    return !event
-    ? makeInitialStateNoEvent(isDropoff)
-    : reservation
-    ? makeInitialStateReservation(event, reservation)
-    : makeInitialStateReserve(event, isDropoff);
+    };
 }
 
 
@@ -468,7 +450,7 @@ interface SetReservationAction {
 // Reservation Actions
 interface SetEstimationAction {
     type: ActionType.SetEstimation;
-    estimation: ReservationEstimateWithEta;
+    estimation: ReservationEstimate;
 }
 
 interface SetDriverLocationAction {

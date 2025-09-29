@@ -1,0 +1,63 @@
+mutation ConfirmPickup($idEvent: Uuid!, $idDriver: Int!) {
+    drivers {
+        confirmPickup(idEvent: $idEvent, idDriver: $idDriver) {
+            pickedUp
+            dest {
+                __typename
+                ... on DriverStopEstimationEvent {
+                    arrival
+                }
+                ... on DriverStopEstimationReservation {
+                    isDropoff
+                    passengers
+                    location {
+                        address {
+                            main
+                            sub
+                        }
+                        coords {
+                            lat
+                            lng
+                        }
+                    }
+                    reservation {
+                        reserver {
+                            phone
+                            name
+                            imageUrl
+                        }
+                    }
+                }
+            }
+            queue {
+                __typename
+                ... on DriverStopEstimationEvent {
+                    arrival
+                }
+                ... on DriverStopEstimationReservation {
+                    isDropoff
+                    passengers
+                    location {
+                        address {
+                            main
+                            sub
+                        }
+                        coords {
+                            lat
+                            lng
+                        }
+                    }
+                    reservation {
+                        reserver {
+                            phone
+                            name
+                            imageUrl
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+

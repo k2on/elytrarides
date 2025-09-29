@@ -1,0 +1,18 @@
+query GetEventAvaliableVehicles($idEvent: Uuid!) {
+  events {
+    get(id: $idEvent) {
+      avaliableVehicles {
+        id
+        color
+        make
+        model
+        year
+        capacity
+        license
+        imageUrl
+        ownerPhone
+      }
+    }
+  }
+}
+

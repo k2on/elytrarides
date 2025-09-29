@@ -18,26 +18,28 @@ query GetAdminEvent($id: Uuid!) {
             }
             reservations {
                 id
-                status
                 madeAt
+                isDropoff
+                isCancelled
+                isComplete
+                isCollected
                 cancelledAt
+                completeAt
+                driverArrivedAt
                 idDriver
-                driverAssignedAt
                 passengerCount
                 reserver {
                     phone
                     name
                 }
                 stops {
-                    completeAt
-                    stopOrder
-                    eta
-                    lat
-                    lng
-                    addressMain
-                    addressSub
-                    driverArrivedAt
-                    completeAt
+                    isComplete
+                    locationLat
+                    locationLng
+                    address {
+                        main
+                        sub
+                    }
                 }
                 rating
                 feedback {
@@ -47,6 +49,8 @@ query GetAdminEvent($id: Uuid!) {
                     isDriverNeverArrived
                 }
                 ratedAt
+                estPickup
+                estDropoff
                 cancelReason
             }
             drivers {
@@ -71,10 +75,48 @@ query GetAdminEvent($id: Uuid!) {
                         id
                     }
                     dest {
-                        ...StopParts
+                        __typename
+                        ... on DriverStopEstimationReservation {
+                            idReservation
+                            secondsPickup
+                            secondsArrival
+                            location {
+                                address {
+                                    main
+                                    sub
+                                }
+                                coords {
+                                    lat
+                                    lng
+                                }
+                            }
+                            reservation {
+                                passengerCount
+                                reserver {
+                                    name
+                                }
+                            }
+                        }
                     }
                     queue {
-                        ...StopParts
+                        __typename
+                        ... on DriverStopEstimationReservation {
+                            idReservation
+                            secondsPickup
+                            secondsArrival
+                            location {
+                                address {
+                                    main
+                                    sub
+                                }
+                            }
+                            reservation {
+                                passengerCount
+                                reserver {
+                                    name
+                                }
+                            }
+                        }
                     }
                 }
             }

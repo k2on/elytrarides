@@ -2,8 +2,9 @@ query GetEventEstimate($id: Uuid!, $form: FormReservation!) {
     events {
         get(id: $id) {
             estimate(form: $form) {
-                stopEtas {
-                    eta
+                timeEstimate {
+                    pickup
+                    arrival
                 }
                 queuePosition
             }

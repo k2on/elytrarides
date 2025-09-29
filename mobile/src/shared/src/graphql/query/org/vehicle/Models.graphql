@@ -1,0 +1,7 @@
+query GetVehicleModels($year: String!, $make: String!) {
+  vehicles {
+    models(year: $year, make: $make)
+  }
+}
+
+

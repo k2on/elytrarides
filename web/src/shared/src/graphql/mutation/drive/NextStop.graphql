@@ -1,7 +1,0 @@
-mutation NextStop($idEvent: Uuid!, $idDriver: Int!) {
-    drivers {
-        next(idEvent: $idEvent, idDriver: $idDriver) {
-            ...DriverStrategyParts
-        }
-    }
-}

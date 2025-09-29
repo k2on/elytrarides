@@ -1,0 +1,8 @@
+mutation UpdateAccount($name: String!, $profileImage: Uuid) {
+    users {
+        meUpdate(form: {name: $name, profileImage: $profileImage}) {
+            name
+        }
+    }
+}
+

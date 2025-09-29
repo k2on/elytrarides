@@ -1,0 +1,18 @@
+query GetEvent($id: Uuid!) {
+    events {
+        get(id: $id) {
+            id
+            name
+            bio
+            imageUrl
+            timeStart
+            timeEnd
+            reservationsStart
+            publishedAt
+            location {
+                id
+                label
+            }
+        }
+    }
+}

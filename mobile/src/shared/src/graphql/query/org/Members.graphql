@@ -1,0 +1,31 @@
+query GetOrgMembers($id: Uuid!) {
+  orgs {
+    get(id: $id) {
+      groups {
+          id
+          label
+          color
+      }
+      invites {
+          id
+          createdAt
+      }
+      memberships {
+        user {
+            name
+            imageUrl
+            phone
+        }
+        groups {
+            group {
+                id
+                label
+                color
+            }
+        }
+        isAdmin
+        isDriver
+      }
+    }
+  }
+}

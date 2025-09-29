@@ -1,0 +1,14 @@
+query SearchOrgs($input: String!) {
+  orgs {
+    search(input: $input) {
+      id
+      label
+      bio
+      college {
+          id
+          name
+          logoUrl
+      }
+    }
+  }
+}

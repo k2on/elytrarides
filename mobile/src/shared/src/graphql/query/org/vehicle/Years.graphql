@@ -1,0 +1,5 @@
+query GetVehicleYears {
+  vehicles {
+    years
+  }
+}

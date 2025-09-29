@@ -1,0 +1,10 @@
+mutation UpdateMembership($idOrg: Uuid!, $phone: Phone!, $flags: Int!) {
+    orgs {
+        updateMembership(
+            idOrg: $idOrg,
+            phone: $phone,
+            flags: $flags
+        ) { isMember, isDriver, isAdmin }
+    }
+}
+

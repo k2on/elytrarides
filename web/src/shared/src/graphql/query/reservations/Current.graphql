@@ -1,12 +1,55 @@
 query GetCurrentReservation($idEvent: Uuid!) {
     reservations {
         current(idEvent: $idEvent) {
-            ...ReservationParts
-            estimate {
-                queuePosition
-                stopEtas {
-                    eta
+            id
+            isDropoff
+            isCancelled
+            isComplete
+            isPickedUp
+            isDriverArrived
+            stops {
+                locationLat
+                locationLng
+                isComplete
+                address {
+                    main
+                    sub
                 }
+            }
+            event {
+                id
+                name
+                bio
+                imageUrl
+                timeStart
+                timeEnd
+                reservationsStart
+                publishedAt
+                location {
+                    id
+                    label
+                }
+            }
+            driver {
+                phone
+                user {
+                    name
+                    imageUrl
+                }
+                vehicle {
+                    color
+                    license
+                    make
+                    model
+                    imageUrl
+                }
+            }
+            estimate {
+                timeEstimate {
+                    pickup
+                    arrival
+                }
+                queuePosition
             }
         }
     }

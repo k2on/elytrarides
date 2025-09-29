@@ -1,0 +1,5 @@
+mutation SendOtp($phone: Phone!) {
+    auth {
+        sendOtp(phone: $phone)
+    }
+}

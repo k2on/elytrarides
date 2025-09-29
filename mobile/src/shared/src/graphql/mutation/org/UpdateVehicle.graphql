@@ -1,0 +1,9 @@
+mutation UpdateVehicle($idOrg: Uuid!, $idVehicle: Uuid!, $form: FormVehicle!) {
+    orgs {
+        updateVehicle(
+            idVehicle: $idVehicle,
+            idOrg: $idOrg,
+            form: $form,
+        ) { id }
+    }
+}

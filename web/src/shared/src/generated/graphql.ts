@@ -27,6 +27,12 @@ export type Scalars = {
   Uuid: { input: any; output: any; }
 };
 
+export type Address = {
+  __typename?: 'Address';
+  main: Scalars['String']['output'];
+  sub: Scalars['String']['output'];
+};
+
 export type AuthMutation = {
   __typename?: 'AuthMutation';
   /** Send OTP to phone */
@@ -44,12 +50,6 @@ export type AuthMutationSendOtpArgs = {
 export type AuthMutationVerifyOtpArgs = {
   code: Scalars['String']['input'];
   phone: Scalars['Phone']['input'];
-};
-
-export type AvaliableReservation = {
-  __typename?: 'AvaliableReservation';
-  reservation: ReservationWithoutStops;
-  stops: Array<DriverStopEstimation>;
 };
 
 export type College = {
@@ -100,26 +100,6 @@ export type DbGroupMembershipInsertable = {
   removedBy?: Maybe<Scalars['String']['output']>;
 };
 
-export type DbReservation = {
-  __typename?: 'DBReservation';
-  actualPassengerCountGivenAt?: Maybe<Scalars['Int']['output']>;
-  cancelReason?: Maybe<Scalars['Int']['output']>;
-  cancelReasonAt?: Maybe<Scalars['Int']['output']>;
-  cancelledAt?: Maybe<Scalars['Int']['output']>;
-  driverAssignedAt?: Maybe<Scalars['Int']['output']>;
-  feedback?: Maybe<Scalars['Int']['output']>;
-  id: Scalars['Uuid']['output'];
-  idDriver?: Maybe<Scalars['Int']['output']>;
-  idEvent: Scalars['Uuid']['output'];
-  initialPassengerCount: Scalars['Int']['output'];
-  madeAt: Scalars['Int']['output'];
-  passengerCount: Scalars['Int']['output'];
-  ratedAt?: Maybe<Scalars['Int']['output']>;
-  rating?: Maybe<Scalars['Int']['output']>;
-  reserver: Scalars['String']['output'];
-  status: Scalars['Int']['output'];
-};
-
 export type Driver = {
   __typename?: 'Driver';
   event: Event;
@@ -138,8 +118,10 @@ export type DriverMutation = {
   acceptReservation: DriverStrategyEstimations;
   /** Confirm driver arrival */
   confirmArrival: DriverStrategyEstimations;
-  /** Complete the current stop */
-  next: DriverStrategyEstimations;
+  /** Confirm driver dropoff */
+  confirmDropoff: DriverStrategyEstimations;
+  /** Confirm driver pickup */
+  confirmPickup: DriverStrategyEstimations;
   /** Sync driver location and queue with server */
   ping: DriverStrategyEstimations;
 };
@@ -157,7 +139,13 @@ export type DriverMutationConfirmArrivalArgs = {
 };
 
 
-export type DriverMutationNextArgs = {
+export type DriverMutationConfirmDropoffArgs = {
+  idDriver: Scalars['Int']['input'];
+  idEvent: Scalars['Uuid']['input'];
+};
+
+
+export type DriverMutationConfirmPickupArgs = {
   idDriver: Scalars['Int']['input'];
   idEvent: Scalars['Uuid']['input'];
 };
@@ -169,23 +157,30 @@ export type DriverMutationPingArgs = {
   location: FormLatLng;
 };
 
-export type DriverStop = {
-  __typename?: 'DriverStop';
-  addressMain: Scalars['String']['output'];
-  addressSub: Scalars['String']['output'];
-  idReservation: Scalars['Uuid']['output'];
-  idStop: Scalars['Uuid']['output'];
-  isEventLocation: Scalars['Boolean']['output'];
-  lat: Scalars['Float']['output'];
-  lng: Scalars['Float']['output'];
-  passengers: Scalars['Int']['output'];
+export type DriverStopEstimation = DriverStopEstimationEvent | DriverStopEstimationReservation;
+
+export type DriverStopEstimationEvent = {
+  __typename?: 'DriverStopEstimationEvent';
+  arrival: Scalars['Int']['output'];
 };
 
-export type DriverStopEstimation = {
-  __typename?: 'DriverStopEstimation';
-  /** Estimated time of arival in seconds */
-  eta: Scalars['Int']['output'];
-  stop: DriverStop;
+export type DriverStopEstimationReservation = {
+  __typename?: 'DriverStopEstimationReservation';
+  idReservation: Scalars['Uuid']['output'];
+  isDropoff: Scalars['Boolean']['output'];
+  location: DriverStopLocation;
+  order: Scalars['Int']['output'];
+  passengers: Scalars['Int']['output'];
+  reservation: Reservation;
+  secondsArrival: Scalars['Int']['output'];
+  secondsPickup: Scalars['Int']['output'];
+};
+
+export type DriverStopLocation = {
+  __typename?: 'DriverStopLocation';
+  address: Address;
+  coords: LatLng;
+  placeId: Scalars['String']['output'];
 };
 
 export type DriverStrategyEstimations = {
@@ -194,7 +189,6 @@ export type DriverStrategyEstimations = {
   driver: Driver;
   pickedUp: Array<Scalars['Uuid']['output']>;
   queue: Array<DriverStopEstimation>;
-  reservations: Array<ReservationWithoutStops>;
 };
 
 export type DriverWithVehicle = {
@@ -210,7 +204,7 @@ export type DriverWithVehicle = {
 
 export type Event = {
   __typename?: 'Event';
-  avaliableReservation?: Maybe<AvaliableReservation>;
+  avaliableReservation?: Maybe<Reservation>;
   avaliableVehicles: Array<Vehicle>;
   bio?: Maybe<Scalars['String']['output']>;
   drivers: Array<Driver>;
@@ -319,21 +313,15 @@ export type FormOrganization = {
 };
 
 export type FormReservation = {
+  isDropoff: Scalars['Boolean']['input'];
   passengerCount: Scalars['Int']['input'];
   stops: Array<FormReservationStop>;
 };
 
-/** The input type for a stop of a reservation. If location is null, then it is treated as a event location */
 export type FormReservationStop = {
-  id: Scalars['Uuid']['input'];
-  location?: InputMaybe<FormReservationStopLocation>;
-  stopOrder: Scalars['Int']['input'];
-};
-
-export type FormReservationStopLocation = {
   address: Scalars['String']['input'];
   location: FormLatLng;
-  placeId?: InputMaybe<Scalars['String']['input']>;
+  placeId: Scalars['String']['input'];
 };
 
 export type FormUser = {
@@ -643,8 +631,11 @@ export type Reservation = {
   cancelReason?: Maybe<Scalars['Int']['output']>;
   cancelReasonAt?: Maybe<Scalars['Int']['output']>;
   cancelledAt?: Maybe<Scalars['Int']['output']>;
+  completeAt?: Maybe<Scalars['Int']['output']>;
   driver?: Maybe<DriverWithVehicle>;
-  driverAssignedAt?: Maybe<Scalars['Int']['output']>;
+  driverArrivedAt?: Maybe<Scalars['Int']['output']>;
+  estDropoff: Scalars['Int']['output'];
+  estPickup: Scalars['Int']['output'];
   estimate: ReservationEstimate;
   event: Event;
   feedback?: Maybe<Feedback>;
@@ -652,7 +643,10 @@ export type Reservation = {
   idDriver?: Maybe<Scalars['Int']['output']>;
   idEvent: Scalars['Uuid']['output'];
   isCancelled: Scalars['Boolean']['output'];
+  isCollected: Scalars['Boolean']['output'];
   isComplete: Scalars['Boolean']['output'];
+  isDriverArrived: Scalars['Boolean']['output'];
+  isDropoff: Scalars['Boolean']['output'];
   isPickedUp: Scalars['Boolean']['output'];
   madeAt: Scalars['Int']['output'];
   passengerCount: Scalars['Int']['output'];
@@ -660,14 +654,13 @@ export type Reservation = {
   rating?: Maybe<Scalars['Int']['output']>;
   reserver: User;
   reserverPhone: Scalars['Phone']['output'];
-  status: Scalars['Int']['output'];
   stops: Array<ReservationStop>;
 };
 
 export type ReservationEstimate = {
   __typename?: 'ReservationEstimate';
   queuePosition: Scalars['Int']['output'];
-  stopEtas: Array<DriverStopEstimation>;
+  timeEstimate: TimeEstimate;
 };
 
 export type ReservationMutation = {
@@ -675,9 +668,9 @@ export type ReservationMutation = {
   /** Cancel a reservation */
   cancel: Reservation;
   /** Give a reason for the cancellation */
-  giveCancelReason: DbReservation;
+  giveCancelReason: Reservation;
   /** Rate a reservation */
-  rate: DbReservation;
+  rate: Reservation;
   /** Update a reservation */
   reserve: Reservation;
 };
@@ -727,43 +720,12 @@ export type ReservationQueryGetArgs = {
 
 export type ReservationStop = {
   __typename?: 'ReservationStop';
-  addressMain: Scalars['String']['output'];
-  addressSub: Scalars['String']['output'];
+  address: Address;
   completeAt?: Maybe<Scalars['Int']['output']>;
-  createdAt: Scalars['Int']['output'];
-  driverArrivedAt?: Maybe<Scalars['Int']['output']>;
-  eta: Scalars['Int']['output'];
-  id: Scalars['Uuid']['output'];
-  idReservation: Scalars['Uuid']['output'];
-  isEventLocation: Scalars['Boolean']['output'];
-  lat: Scalars['Float']['output'];
-  latAddress: Scalars['Float']['output'];
-  lng: Scalars['Float']['output'];
-  lngAddress: Scalars['Float']['output'];
-  placeId?: Maybe<Scalars['String']['output']>;
-  stopOrder: Scalars['Int']['output'];
-  updatedAt?: Maybe<Scalars['Int']['output']>;
-};
-
-export type ReservationWithoutStops = {
-  __typename?: 'ReservationWithoutStops';
-  cancelReason?: Maybe<Scalars['Int']['output']>;
-  cancelReasonAt?: Maybe<Scalars['Int']['output']>;
-  cancelledAt?: Maybe<Scalars['Int']['output']>;
-  driver?: Maybe<DriverWithVehicle>;
-  event: Event;
-  feedback?: Maybe<Feedback>;
-  id: Scalars['Uuid']['output'];
-  idDriver?: Maybe<Scalars['Int']['output']>;
-  idEvent: Scalars['Uuid']['output'];
-  isCancelled: Scalars['Boolean']['output'];
   isComplete: Scalars['Boolean']['output'];
-  madeAt: Scalars['Int']['output'];
-  passengerCount: Scalars['Int']['output'];
-  ratedAt?: Maybe<Scalars['Int']['output']>;
-  rating?: Maybe<Scalars['Int']['output']>;
-  reserver: User;
-  reserverPhone: Scalars['Phone']['output'];
+  locationLat: Scalars['Float']['output'];
+  locationLng: Scalars['Float']['output'];
+  placeId: Scalars['String']['output'];
 };
 
 export type SearchResult = {
@@ -796,6 +758,12 @@ export type SubscriptionEventArgs = {
 export type SubscriptionReservationArgs = {
   id: Scalars['Uuid']['input'];
   token: Scalars['String']['input'];
+};
+
+export type TimeEstimate = {
+  __typename?: 'TimeEstimate';
+  arrival: Scalars['Int']['output'];
+  pickup: Scalars['Int']['output'];
 };
 
 export type User = {
@@ -881,12 +849,6 @@ export type VehicleQueryModelsArgs = {
   year: Scalars['String']['input'];
 };
 
-export type DriverStrategyPartsFragment = { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } } | null, queue: Array<{ __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } }>, reservations: Array<{ __typename?: 'ReservationWithoutStops', id: any, reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } }> };
-
-export type ReservationPartsFragment = { __typename?: 'Reservation', id: any, isCancelled: boolean, isComplete: boolean, isPickedUp: boolean, stops: Array<{ __typename?: 'ReservationStop', lat: number, lng: number, completeAt?: number | null, addressMain: string, addressSub: string, driverArrivedAt?: number | null }>, event: { __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string } | null }, driver?: { __typename?: 'DriverWithVehicle', phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle: { __typename?: 'Vehicle', color: string, license: string, make: string, model: string, imageUrl: string } } | null };
-
-export type StopPartsFragment = { __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } };
-
 export type DeleteAccountMutationVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -928,7 +890,7 @@ export type AcceptMutationVariables = Exact<{
 }>;
 
 
-export type AcceptMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', acceptReservation: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } } | null, queue: Array<{ __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } }>, reservations: Array<{ __typename?: 'ReservationWithoutStops', id: any, reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } }> } } };
+export type AcceptMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', acceptReservation: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } } | null, queue: Array<{ __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } }> } } };
 
 export type AcceptReservationMutationVariables = Exact<{
   idDriver: Scalars['Int']['input'];
@@ -936,7 +898,7 @@ export type AcceptReservationMutationVariables = Exact<{
 }>;
 
 
-export type AcceptReservationMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', acceptReservation: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } } | null, queue: Array<{ __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } }>, reservations: Array<{ __typename?: 'ReservationWithoutStops', id: any, reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } }> } } };
+export type AcceptReservationMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', acceptReservation: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } } | null, queue: Array<{ __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } }> } } };
 
 export type ConfirmArrivalMutationVariables = Exact<{
   idEvent: Scalars['Uuid']['input'];
@@ -944,15 +906,23 @@ export type ConfirmArrivalMutationVariables = Exact<{
 }>;
 
 
-export type ConfirmArrivalMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', confirmArrival: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } } | null, queue: Array<{ __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } }>, reservations: Array<{ __typename?: 'ReservationWithoutStops', id: any, reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } }> } } };
+export type ConfirmArrivalMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', confirmArrival: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } } | null, queue: Array<{ __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } }> } } };
 
-export type NextStopMutationVariables = Exact<{
+export type ConfirmPickupMutationVariables = Exact<{
   idEvent: Scalars['Uuid']['input'];
   idDriver: Scalars['Int']['input'];
 }>;
 
 
-export type NextStopMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', next: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } } | null, queue: Array<{ __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } }>, reservations: Array<{ __typename?: 'ReservationWithoutStops', id: any, reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } }> } } };
+export type ConfirmPickupMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', confirmPickup: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } } | null, queue: Array<{ __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } }> } } };
+
+export type ConfirmDropoffMutationVariables = Exact<{
+  idEvent: Scalars['Uuid']['input'];
+  idDriver: Scalars['Int']['input'];
+}>;
+
+
+export type ConfirmDropoffMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', confirmDropoff: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } } | null, queue: Array<{ __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } }> } } };
 
 export type DriverPingMutationVariables = Exact<{
   idEvent: Scalars['Uuid']['input'];
@@ -961,7 +931,7 @@ export type DriverPingMutationVariables = Exact<{
 }>;
 
 
-export type DriverPingMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', ping: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } } | null, queue: Array<{ __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } }>, reservations: Array<{ __typename?: 'ReservationWithoutStops', id: any, reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } }> } } };
+export type DriverPingMutation = { __typename?: 'MutationRoot', drivers: { __typename?: 'DriverMutation', ping: { __typename?: 'DriverStrategyEstimations', pickedUp: Array<any>, dest?: { __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } } | null, queue: Array<{ __typename: 'DriverStopEstimationEvent', arrival: number } | { __typename: 'DriverStopEstimationReservation', isDropoff: boolean, passengers: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', reserver: { __typename?: 'User', phone: any, name: string, imageUrl?: string | null } } }> } } };
 
 export type UpdateGroupMutationVariables = Exact<{
   idOrg: Scalars['Uuid']['input'];
@@ -1070,7 +1040,7 @@ export type ReservationGiveCancelReasonMutationVariables = Exact<{
 }>;
 
 
-export type ReservationGiveCancelReasonMutation = { __typename?: 'MutationRoot', reservations: { __typename?: 'ReservationMutation', giveCancelReason: { __typename?: 'DBReservation', id: any } } };
+export type ReservationGiveCancelReasonMutation = { __typename?: 'MutationRoot', reservations: { __typename?: 'ReservationMutation', giveCancelReason: { __typename?: 'Reservation', id: any } } };
 
 export type RateReservationMutationVariables = Exact<{
   id: Scalars['Uuid']['input'];
@@ -1079,7 +1049,7 @@ export type RateReservationMutationVariables = Exact<{
 }>;
 
 
-export type RateReservationMutation = { __typename?: 'MutationRoot', reservations: { __typename?: 'ReservationMutation', rate: { __typename?: 'DBReservation', id: any } } };
+export type RateReservationMutation = { __typename?: 'MutationRoot', reservations: { __typename?: 'ReservationMutation', rate: { __typename?: 'Reservation', id: any } } };
 
 export type ReserveMutationVariables = Exact<{
   id: Scalars['Uuid']['input'];
@@ -1088,7 +1058,7 @@ export type ReserveMutationVariables = Exact<{
 }>;
 
 
-export type ReserveMutation = { __typename?: 'MutationRoot', reservations: { __typename?: 'ReservationMutation', reserve: { __typename?: 'Reservation', id: any, isCancelled: boolean, isComplete: boolean, isPickedUp: boolean, estimate: { __typename?: 'ReservationEstimate', queuePosition: number, stopEtas: Array<{ __typename?: 'DriverStopEstimation', eta: number }> }, stops: Array<{ __typename?: 'ReservationStop', lat: number, lng: number, completeAt?: number | null, addressMain: string, addressSub: string, driverArrivedAt?: number | null }>, event: { __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string } | null }, driver?: { __typename?: 'DriverWithVehicle', phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle: { __typename?: 'Vehicle', color: string, license: string, make: string, model: string, imageUrl: string } } | null } } };
+export type ReserveMutation = { __typename?: 'MutationRoot', reservations: { __typename?: 'ReservationMutation', reserve: { __typename?: 'Reservation', id: any, isDropoff: boolean, isCancelled: boolean, isComplete: boolean, isPickedUp: boolean, isDriverArrived: boolean, stops: Array<{ __typename?: 'ReservationStop', locationLat: number, locationLng: number, isComplete: boolean, address: { __typename?: 'Address', main: string, sub: string } }>, event: { __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string } | null }, driver?: { __typename?: 'DriverWithVehicle', phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle: { __typename?: 'Vehicle', color: string, license: string, make: string, model: string, imageUrl: string } } | null, estimate: { __typename?: 'ReservationEstimate', queuePosition: number, timeEstimate: { __typename?: 'TimeEstimate', pickup: number, arrival: number } } } } };
 
 export type UpdateOrgMutationVariables = Exact<{
   idOrg: Scalars['Uuid']['input'];
@@ -1123,7 +1093,7 @@ export type GetAdminEventQueryVariables = Exact<{
 }>;
 
 
-export type GetAdminEventQuery = { __typename?: 'QueryRoot', events: { __typename?: 'EventQuery', get: { __typename?: 'Event', id: any, idOrg: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string, locationLat: number, locationLng: number } | null, reservations: Array<{ __typename?: 'Reservation', id: any, status: number, madeAt: number, cancelledAt?: number | null, idDriver?: number | null, driverAssignedAt?: number | null, passengerCount: number, rating?: number | null, ratedAt?: number | null, cancelReason?: number | null, reserver: { __typename?: 'User', phone: any, name: string }, stops: Array<{ __typename?: 'ReservationStop', completeAt?: number | null, stopOrder: number, eta: number, lat: number, lng: number, addressMain: string, addressSub: string, driverArrivedAt?: number | null }>, feedback?: { __typename?: 'Feedback', isLongWait: boolean, isEtaAccuracy: boolean, isPickupSpot: boolean, isDriverNeverArrived: boolean } | null }>, drivers: Array<{ __typename?: 'Driver', id: number, phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle?: { __typename?: 'Vehicle', id: any, imageUrl: string, make: string, model: string, color: string } | null }>, strategy: { __typename?: 'StrategyEstimations', drivers: Array<{ __typename?: 'DriverStrategyEstimations', driver: { __typename?: 'Driver', id: number }, dest?: { __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } } | null, queue: Array<{ __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', passengers: number, idReservation: any, lat: number, lng: number, addressMain: string, addressSub: string } }> }> } } } };
+export type GetAdminEventQuery = { __typename?: 'QueryRoot', events: { __typename?: 'EventQuery', get: { __typename?: 'Event', id: any, idOrg: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string, locationLat: number, locationLng: number } | null, reservations: Array<{ __typename?: 'Reservation', id: any, madeAt: number, isDropoff: boolean, isCancelled: boolean, isComplete: boolean, isCollected: boolean, cancelledAt?: number | null, completeAt?: number | null, driverArrivedAt?: number | null, idDriver?: number | null, passengerCount: number, rating?: number | null, ratedAt?: number | null, estPickup: number, estDropoff: number, cancelReason?: number | null, reserver: { __typename?: 'User', phone: any, name: string }, stops: Array<{ __typename?: 'ReservationStop', isComplete: boolean, locationLat: number, locationLng: number, address: { __typename?: 'Address', main: string, sub: string } }>, feedback?: { __typename?: 'Feedback', isLongWait: boolean, isEtaAccuracy: boolean, isPickupSpot: boolean, isDriverNeverArrived: boolean } | null }>, drivers: Array<{ __typename?: 'Driver', id: number, phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle?: { __typename?: 'Vehicle', id: any, imageUrl: string, make: string, model: string, color: string } | null }>, strategy: { __typename?: 'StrategyEstimations', drivers: Array<{ __typename?: 'DriverStrategyEstimations', driver: { __typename?: 'Driver', id: number }, dest?: { __typename: 'DriverStopEstimationEvent' } | { __typename: 'DriverStopEstimationReservation', idReservation: any, secondsPickup: number, secondsArrival: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string }, coords: { __typename?: 'LatLng', lat: number, lng: number } }, reservation: { __typename?: 'Reservation', passengerCount: number, reserver: { __typename?: 'User', name: string } } } | null, queue: Array<{ __typename: 'DriverStopEstimationEvent' } | { __typename: 'DriverStopEstimationReservation', idReservation: any, secondsPickup: number, secondsArrival: number, location: { __typename?: 'DriverStopLocation', address: { __typename?: 'Address', main: string, sub: string } }, reservation: { __typename?: 'Reservation', passengerCount: number, reserver: { __typename?: 'User', name: string } } }> }> } } } };
 
 export type GetAvaliableReservationQueryVariables = Exact<{
   id: Scalars['Uuid']['input'];
@@ -1131,7 +1101,7 @@ export type GetAvaliableReservationQueryVariables = Exact<{
 }>;
 
 
-export type GetAvaliableReservationQuery = { __typename?: 'QueryRoot', events: { __typename?: 'EventQuery', get: { __typename?: 'Event', avaliableReservation?: { __typename?: 'AvaliableReservation', reservation: { __typename?: 'ReservationWithoutStops', id: any, passengerCount: number, reserver: { __typename?: 'User', name: string, imageUrl?: string | null } }, stops: Array<{ __typename?: 'DriverStopEstimation', eta: number, stop: { __typename?: 'DriverStop', addressMain: string, addressSub: string, lat: number, lng: number } }> } | null } } };
+export type GetAvaliableReservationQuery = { __typename?: 'QueryRoot', events: { __typename?: 'EventQuery', get: { __typename?: 'Event', avaliableReservation?: { __typename?: 'Reservation', id: any, passengerCount: number, isDropoff: boolean, reserver: { __typename?: 'User', name: string }, stops: Array<{ __typename?: 'ReservationStop', locationLat: number, locationLng: number, address: { __typename?: 'Address', main: string, sub: string } }> } | null } } };
 
 export type GetEventForDriverQueryVariables = Exact<{
   id: Scalars['Uuid']['input'];
@@ -1153,14 +1123,14 @@ export type GetEventEstimateQueryVariables = Exact<{
 }>;
 
 
-export type GetEventEstimateQuery = { __typename?: 'QueryRoot', events: { __typename?: 'EventQuery', get: { __typename?: 'Event', estimate: { __typename?: 'ReservationEstimate', queuePosition: number, stopEtas: Array<{ __typename?: 'DriverStopEstimation', eta: number }> } } } };
+export type GetEventEstimateQuery = { __typename?: 'QueryRoot', events: { __typename?: 'EventQuery', get: { __typename?: 'Event', estimate: { __typename?: 'ReservationEstimate', queuePosition: number, timeEstimate: { __typename?: 'TimeEstimate', pickup: number, arrival: number } } } } };
 
 export type GetEventEstimateWithoutLocationQueryVariables = Exact<{
   id: Scalars['Uuid']['input'];
 }>;
 
 
-export type GetEventEstimateWithoutLocationQuery = { __typename?: 'QueryRoot', events: { __typename?: 'EventQuery', get: { __typename?: 'Event', estimateWithoutLocation: { __typename?: 'ReservationEstimate', queuePosition: number, stopEtas: Array<{ __typename?: 'DriverStopEstimation', eta: number }> } } } };
+export type GetEventEstimateWithoutLocationQuery = { __typename?: 'QueryRoot', events: { __typename?: 'EventQuery', get: { __typename?: 'Event', estimateWithoutLocation: { __typename?: 'ReservationEstimate', queuePosition: number, timeEstimate: { __typename?: 'TimeEstimate', pickup: number, arrival: number } } } } };
 
 export type GetEventQueryVariables = Exact<{
   id: Scalars['Uuid']['input'];
@@ -1210,7 +1180,7 @@ export type GetOrgEventsWithPassengersQueryVariables = Exact<{
 }>;
 
 
-export type GetOrgEventsWithPassengersQuery = { __typename?: 'QueryRoot', orgs: { __typename?: 'OrgQuery', get: { __typename?: 'Organization', id: any, label: string, events: Array<{ __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', label: string } | null, reservations: Array<{ __typename?: 'Reservation', passengerCount: number }> }> } } };
+export type GetOrgEventsWithPassengersQuery = { __typename?: 'QueryRoot', orgs: { __typename?: 'OrgQuery', get: { __typename?: 'Organization', id: any, label: string, events: Array<{ __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', label: string } | null, reservations: Array<{ __typename?: 'Reservation', passengerCount: number, isDropoff: boolean }> }> } } };
 
 export type GetOrgLocationsQueryVariables = Exact<{
   id: Scalars['Uuid']['input'];
@@ -1245,7 +1215,7 @@ export type GetOrgReservationsQueryVariables = Exact<{
 }>;
 
 
-export type GetOrgReservationsQuery = { __typename?: 'QueryRoot', orgs: { __typename?: 'OrgQuery', get: { __typename?: 'Organization', events: Array<{ __typename?: 'Event', reservations: Array<{ __typename?: 'Reservation', stops: Array<{ __typename?: 'ReservationStop', lat: number, lng: number }> }> }> } } };
+export type GetOrgReservationsQuery = { __typename?: 'QueryRoot', orgs: { __typename?: 'OrgQuery', get: { __typename?: 'Organization', events: Array<{ __typename?: 'Event', reservations: Array<{ __typename?: 'Reservation', stops: Array<{ __typename?: 'ReservationStop', locationLat: number, locationLng: number }> }> }> } } };
 
 export type GetOrgVehiclesQueryVariables = Exact<{
   id: Scalars['Uuid']['input'];
@@ -1288,7 +1258,7 @@ export type GetCurrentReservationQueryVariables = Exact<{
 }>;
 
 
-export type GetCurrentReservationQuery = { __typename?: 'QueryRoot', reservations: { __typename?: 'ReservationQuery', current?: { __typename?: 'Reservation', id: any, isCancelled: boolean, isComplete: boolean, isPickedUp: boolean, estimate: { __typename?: 'ReservationEstimate', queuePosition: number, stopEtas: Array<{ __typename?: 'DriverStopEstimation', eta: number }> }, stops: Array<{ __typename?: 'ReservationStop', lat: number, lng: number, completeAt?: number | null, addressMain: string, addressSub: string, driverArrivedAt?: number | null }>, event: { __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string } | null }, driver?: { __typename?: 'DriverWithVehicle', phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle: { __typename?: 'Vehicle', color: string, license: string, make: string, model: string, imageUrl: string } } | null } | null } };
+export type GetCurrentReservationQuery = { __typename?: 'QueryRoot', reservations: { __typename?: 'ReservationQuery', current?: { __typename?: 'Reservation', id: any, isDropoff: boolean, isCancelled: boolean, isComplete: boolean, isPickedUp: boolean, isDriverArrived: boolean, stops: Array<{ __typename?: 'ReservationStop', locationLat: number, locationLng: number, isComplete: boolean, address: { __typename?: 'Address', main: string, sub: string } }>, event: { __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string } | null }, driver?: { __typename?: 'DriverWithVehicle', phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle: { __typename?: 'Vehicle', color: string, license: string, make: string, model: string, imageUrl: string } } | null, estimate: { __typename?: 'ReservationEstimate', queuePosition: number, timeEstimate: { __typename?: 'TimeEstimate', pickup: number, arrival: number } } } | null } };
 
 export type GetCollegesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1326,84 +1296,9 @@ export type SubscribeToReservationSubscriptionVariables = Exact<{
 }>;
 
 
-export type SubscribeToReservationSubscription = { __typename?: 'Subscription', reservation: { __typename: 'MessageDriverLocation', location: { __typename?: 'LatLng', lat: number, lng: number } } | { __typename: 'MessageEventEstimations' } | { __typename: 'MessageReservationEstimation', estimate: { __typename?: 'ReservationEstimate', queuePosition: number, stopEtas: Array<{ __typename?: 'DriverStopEstimation', eta: number }> } } | { __typename: 'MessageReservationUpdate', reservation: { __typename?: 'Reservation', id: any, isCancelled: boolean, isComplete: boolean, isPickedUp: boolean, stops: Array<{ __typename?: 'ReservationStop', lat: number, lng: number, completeAt?: number | null, addressMain: string, addressSub: string, driverArrivedAt?: number | null }>, event: { __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string } | null }, driver?: { __typename?: 'DriverWithVehicle', phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle: { __typename?: 'Vehicle', color: string, license: string, make: string, model: string, imageUrl: string } } | null } } };
+export type SubscribeToReservationSubscription = { __typename?: 'Subscription', reservation: { __typename: 'MessageDriverLocation', location: { __typename?: 'LatLng', lat: number, lng: number } } | { __typename: 'MessageEventEstimations' } | { __typename: 'MessageReservationEstimation', estimate: { __typename?: 'ReservationEstimate', queuePosition: number, timeEstimate: { __typename?: 'TimeEstimate', pickup: number, arrival: number } } } | { __typename: 'MessageReservationUpdate', reservation: { __typename?: 'Reservation', id: any, isDropoff: boolean, isCancelled: boolean, isComplete: boolean, isPickedUp: boolean, isDriverArrived: boolean, stops: Array<{ __typename?: 'ReservationStop', locationLat: number, locationLng: number, isComplete: boolean, address: { __typename?: 'Address', main: string, sub: string } }>, event: { __typename?: 'Event', id: any, name: string, bio?: string | null, imageUrl?: string | null, timeStart: number, timeEnd: number, reservationsStart: number, publishedAt?: number | null, location?: { __typename?: 'OrgLocation', id: any, label: string } | null }, driver?: { __typename?: 'DriverWithVehicle', phone: any, user: { __typename?: 'User', name: string, imageUrl?: string | null }, vehicle: { __typename?: 'Vehicle', color: string, license: string, make: string, model: string, imageUrl: string } } | null } } };
 
-export const StopPartsFragmentDoc = `
-    fragment StopParts on DriverStopEstimation {
-  eta
-  stop {
-    passengers
-    idReservation
-    lat
-    lng
-    addressMain
-    addressSub
-  }
-}
-    `;
-export const DriverStrategyPartsFragmentDoc = `
-    fragment DriverStrategyParts on DriverStrategyEstimations {
-  pickedUp
-  dest {
-    ...StopParts
-  }
-  queue {
-    ...StopParts
-  }
-  reservations {
-    id
-    reserver {
-      phone
-      name
-      imageUrl
-    }
-  }
-}
-    ${StopPartsFragmentDoc}`;
-export const ReservationPartsFragmentDoc = `
-    fragment ReservationParts on Reservation {
-  id
-  isCancelled
-  isComplete
-  isPickedUp
-  stops {
-    lat
-    lng
-    completeAt
-    addressMain
-    addressSub
-    driverArrivedAt
-  }
-  event {
-    id
-    name
-    bio
-    imageUrl
-    timeStart
-    timeEnd
-    reservationsStart
-    publishedAt
-    location {
-      id
-      label
-    }
-  }
-  driver {
-    phone
-    user {
-      name
-      imageUrl
-    }
-    vehicle {
-      color
-      license
-      make
-      model
-      imageUrl
-    }
-  }
-}
-    `;
+
 export const DeleteAccountDocument = `
     mutation DeleteAccount {
   users {
@@ -1512,11 +1407,65 @@ export const AcceptDocument = `
     mutation Accept($idDriver: Int!, $idReservation: Uuid!) {
   drivers {
     acceptReservation(idDriver: $idDriver, idReservation: $idReservation) {
-      ...DriverStrategyParts
+      pickedUp
+      dest {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
+      queue {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
     }
   }
 }
-    ${DriverStrategyPartsFragmentDoc}`;
+    `;
 export const useAcceptMutation = <
       TError = unknown,
       TContext = unknown
@@ -1534,11 +1483,65 @@ export const AcceptReservationDocument = `
     mutation AcceptReservation($idDriver: Int!, $idReservation: Uuid!) {
   drivers {
     acceptReservation(idDriver: $idDriver, idReservation: $idReservation) {
-      ...DriverStrategyParts
+      pickedUp
+      dest {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
+      queue {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
     }
   }
 }
-    ${DriverStrategyPartsFragmentDoc}`;
+    `;
 export const useAcceptReservationMutation = <
       TError = unknown,
       TContext = unknown
@@ -1556,11 +1559,65 @@ export const ConfirmArrivalDocument = `
     mutation ConfirmArrival($idEvent: Uuid!, $idDriver: Int!) {
   drivers {
     confirmArrival(idEvent: $idEvent, idDriver: $idDriver) {
-      ...DriverStrategyParts
+      pickedUp
+      dest {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
+      queue {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
     }
   }
 }
-    ${DriverStrategyPartsFragmentDoc}`;
+    `;
 export const useConfirmArrivalMutation = <
       TError = unknown,
       TContext = unknown
@@ -1574,37 +1631,221 @@ export const useConfirmArrivalMutation = <
       (variables?: ConfirmArrivalMutationVariables) => fetcher<ConfirmArrivalMutation, ConfirmArrivalMutationVariables>(client, ConfirmArrivalDocument, variables, headers)(),
       options
     );
-export const NextStopDocument = `
-    mutation NextStop($idEvent: Uuid!, $idDriver: Int!) {
+export const ConfirmPickupDocument = `
+    mutation ConfirmPickup($idEvent: Uuid!, $idDriver: Int!) {
   drivers {
-    next(idEvent: $idEvent, idDriver: $idDriver) {
-      ...DriverStrategyParts
+    confirmPickup(idEvent: $idEvent, idDriver: $idDriver) {
+      pickedUp
+      dest {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
+      queue {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
     }
   }
 }
-    ${DriverStrategyPartsFragmentDoc}`;
-export const useNextStopMutation = <
+    `;
+export const useConfirmPickupMutation = <
       TError = unknown,
       TContext = unknown
     >(
       client: GraphQLClient,
-      options?: UseMutationOptions<NextStopMutation, TError, NextStopMutationVariables, TContext>,
+      options?: UseMutationOptions<ConfirmPickupMutation, TError, ConfirmPickupMutationVariables, TContext>,
       headers?: RequestInit['headers']
     ) =>
-    useMutation<NextStopMutation, TError, NextStopMutationVariables, TContext>(
-      ['NextStop'],
-      (variables?: NextStopMutationVariables) => fetcher<NextStopMutation, NextStopMutationVariables>(client, NextStopDocument, variables, headers)(),
+    useMutation<ConfirmPickupMutation, TError, ConfirmPickupMutationVariables, TContext>(
+      ['ConfirmPickup'],
+      (variables?: ConfirmPickupMutationVariables) => fetcher<ConfirmPickupMutation, ConfirmPickupMutationVariables>(client, ConfirmPickupDocument, variables, headers)(),
+      options
+    );
+export const ConfirmDropoffDocument = `
+    mutation ConfirmDropoff($idEvent: Uuid!, $idDriver: Int!) {
+  drivers {
+    confirmDropoff(idEvent: $idEvent, idDriver: $idDriver) {
+      pickedUp
+      dest {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
+      queue {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
+    }
+  }
+}
+    `;
+export const useConfirmDropoffMutation = <
+      TError = unknown,
+      TContext = unknown
+    >(
+      client: GraphQLClient,
+      options?: UseMutationOptions<ConfirmDropoffMutation, TError, ConfirmDropoffMutationVariables, TContext>,
+      headers?: RequestInit['headers']
+    ) =>
+    useMutation<ConfirmDropoffMutation, TError, ConfirmDropoffMutationVariables, TContext>(
+      ['ConfirmDropoff'],
+      (variables?: ConfirmDropoffMutationVariables) => fetcher<ConfirmDropoffMutation, ConfirmDropoffMutationVariables>(client, ConfirmDropoffDocument, variables, headers)(),
       options
     );
 export const DriverPingDocument = `
     mutation DriverPing($idEvent: Uuid!, $idDriver: Int!, $location: FormLatLng!) {
   drivers {
     ping(idEvent: $idEvent, idDriver: $idDriver, location: $location) {
-      ...DriverStrategyParts
+      pickedUp
+      dest {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
+      queue {
+        __typename
+        ... on DriverStopEstimationEvent {
+          arrival
+        }
+        ... on DriverStopEstimationReservation {
+          isDropoff
+          passengers
+          location {
+            address {
+              main
+              sub
+            }
+            coords {
+              lat
+              lng
+            }
+          }
+          reservation {
+            reserver {
+              phone
+              name
+              imageUrl
+            }
+          }
+        }
+      }
     }
   }
 }
-    ${DriverStrategyPartsFragmentDoc}`;
+    `;
 export const useDriverPingMutation = <
       TError = unknown,
       TContext = unknown
@@ -1937,17 +2178,60 @@ export const ReserveDocument = `
     mutation Reserve($id: Uuid!, $idEvent: Uuid!, $form: FormReservation!) {
   reservations {
     reserve(id: $id, idEvent: $idEvent, form: $form) {
-      ...ReservationParts
+      id
+      isDropoff
+      isCancelled
+      isComplete
+      isPickedUp
+      isDriverArrived
+      stops {
+        locationLat
+        locationLng
+        isComplete
+        address {
+          main
+          sub
+        }
+      }
+      event {
+        id
+        name
+        bio
+        imageUrl
+        timeStart
+        timeEnd
+        reservationsStart
+        publishedAt
+        location {
+          id
+          label
+        }
+      }
+      driver {
+        phone
+        user {
+          name
+          imageUrl
+        }
+        vehicle {
+          color
+          license
+          make
+          model
+          imageUrl
+        }
+      }
       estimate {
-        stopEtas {
-          eta
+        timeEstimate {
+          pickup
+          arrival
         }
         queuePosition
       }
     }
   }
 }
-    ${ReservationPartsFragmentDoc}`;
+    `;
 export const useReserveMutation = <
       TError = unknown,
       TContext = unknown
@@ -2139,26 +2423,28 @@ export const GetAdminEventDocument = `
       }
       reservations {
         id
-        status
         madeAt
+        isDropoff
+        isCancelled
+        isComplete
+        isCollected
         cancelledAt
+        completeAt
+        driverArrivedAt
         idDriver
-        driverAssignedAt
         passengerCount
         reserver {
           phone
           name
         }
         stops {
-          completeAt
-          stopOrder
-          eta
-          lat
-          lng
-          addressMain
-          addressSub
-          driverArrivedAt
-          completeAt
+          isComplete
+          locationLat
+          locationLng
+          address {
+            main
+            sub
+          }
         }
         rating
         feedback {
@@ -2168,6 +2454,8 @@ export const GetAdminEventDocument = `
           isDriverNeverArrived
         }
         ratedAt
+        estPickup
+        estDropoff
         cancelReason
       }
       drivers {
@@ -2191,17 +2479,55 @@ export const GetAdminEventDocument = `
             id
           }
           dest {
-            ...StopParts
+            __typename
+            ... on DriverStopEstimationReservation {
+              idReservation
+              secondsPickup
+              secondsArrival
+              location {
+                address {
+                  main
+                  sub
+                }
+                coords {
+                  lat
+                  lng
+                }
+              }
+              reservation {
+                passengerCount
+                reserver {
+                  name
+                }
+              }
+            }
           }
           queue {
-            ...StopParts
+            __typename
+            ... on DriverStopEstimationReservation {
+              idReservation
+              secondsPickup
+              secondsArrival
+              location {
+                address {
+                  main
+                  sub
+                }
+              }
+              reservation {
+                passengerCount
+                reserver {
+                  name
+                }
+              }
+            }
           }
         }
       }
     }
   }
 }
-    ${StopPartsFragmentDoc}`;
+    `;
 export const useGetAdminEventQuery = <
       TData = GetAdminEventQuery,
       TError = unknown
@@ -2221,21 +2547,18 @@ export const GetAvaliableReservationDocument = `
   events {
     get(id: $id) {
       avaliableReservation(idDriver: $idDriver) {
-        reservation {
-          id
-          reserver {
-            name
-            imageUrl
-          }
-          passengerCount
+        id
+        reserver {
+          name
         }
+        passengerCount
+        isDropoff
         stops {
-          eta
-          stop {
-            addressMain
-            addressSub
-            lat
-            lng
+          locationLat
+          locationLng
+          address {
+            main
+            sub
           }
         }
       }
@@ -2348,8 +2671,9 @@ export const GetEventEstimateDocument = `
   events {
     get(id: $id) {
       estimate(form: $form) {
-        stopEtas {
-          eta
+        timeEstimate {
+          pickup
+          arrival
         }
         queuePosition
       }
@@ -2376,8 +2700,9 @@ export const GetEventEstimateWithoutLocationDocument = `
   events {
     get(id: $id) {
       estimateWithoutLocation {
-        stopEtas {
-          eta
+        timeEstimate {
+          pickup
+          arrival
         }
         queuePosition
       }
@@ -2610,6 +2935,7 @@ export const GetOrgEventsWithPassengersDocument = `
         }
         reservations {
           passengerCount
+          isDropoff
         }
       }
     }
@@ -2817,8 +3143,8 @@ export const GetOrgReservationsDocument = `
       events {
         reservations {
           stops {
-            lat
-            lng
+            locationLat
+            locationLng
           }
         }
       }
@@ -2961,17 +3287,60 @@ export const GetCurrentReservationDocument = `
     query GetCurrentReservation($idEvent: Uuid!) {
   reservations {
     current(idEvent: $idEvent) {
-      ...ReservationParts
-      estimate {
-        queuePosition
-        stopEtas {
-          eta
+      id
+      isDropoff
+      isCancelled
+      isComplete
+      isPickedUp
+      isDriverArrived
+      stops {
+        locationLat
+        locationLng
+        isComplete
+        address {
+          main
+          sub
         }
+      }
+      event {
+        id
+        name
+        bio
+        imageUrl
+        timeStart
+        timeEnd
+        reservationsStart
+        publishedAt
+        location {
+          id
+          label
+        }
+      }
+      driver {
+        phone
+        user {
+          name
+          imageUrl
+        }
+        vehicle {
+          color
+          license
+          make
+          model
+          imageUrl
+        }
+      }
+      estimate {
+        timeEstimate {
+          pickup
+          arrival
+        }
+        queuePosition
       }
     }
   }
 }
-    ${ReservationPartsFragmentDoc}`;
+    `;
 export const useGetCurrentReservationQuery = <
       TData = GetCurrentReservationQuery,
       TError = unknown
@@ -3146,8 +3515,9 @@ export const SubscribeToReservationDocument = `
     __typename
     ... on MessageReservationEstimation {
       estimate {
-        stopEtas {
-          eta
+        timeEstimate {
+          pickup
+          arrival
         }
         queuePosition
       }
@@ -3160,9 +3530,51 @@ export const SubscribeToReservationDocument = `
     }
     ... on MessageReservationUpdate {
       reservation {
-        ...ReservationParts
+        id
+        isDropoff
+        isCancelled
+        isComplete
+        isPickedUp
+        isDriverArrived
+        stops {
+          locationLat
+          locationLng
+          isComplete
+          address {
+            main
+            sub
+          }
+        }
+        event {
+          id
+          name
+          bio
+          imageUrl
+          timeStart
+          timeEnd
+          reservationsStart
+          publishedAt
+          location {
+            id
+            label
+          }
+        }
+        driver {
+          phone
+          user {
+            name
+            imageUrl
+          }
+          vehicle {
+            color
+            license
+            make
+            model
+            imageUrl
+          }
+        }
       }
     }
   }
 }
-    ${ReservationPartsFragmentDoc}`;
+    `;

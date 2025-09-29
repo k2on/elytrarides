@@ -1,0 +1,10 @@
+query Geocode($placeId: String!) {
+    geo {
+        geocode(placeId: $placeId) {
+            location {
+                lat
+                lng
+            }
+        }
+    }
+}

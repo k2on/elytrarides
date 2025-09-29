@@ -1,0 +1,15 @@
+query GetMeMemberships {
+    users {
+        me {
+            phone
+            name
+            memberships {
+                isAdmin
+                org {
+                    id
+                    label
+                }
+            }
+        }
+    }
+}

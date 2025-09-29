@@ -1,0 +1,20 @@
+query GetOrgEvents($id: Uuid!) {
+  orgs {
+    get(id: $id) {
+      id
+      label
+      events {
+        id
+        name
+        bio
+        imageUrl
+        timeStart
+        timeEnd
+        publishedAt
+        location {
+          label
+        }
+      }
+    }
+  }
+}

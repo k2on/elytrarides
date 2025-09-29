@@ -1,10 +1,53 @@
 mutation Reserve($id: Uuid!, $idEvent: Uuid!, $form: FormReservation!) {
     reservations {
         reserve(id: $id, idEvent: $idEvent, form: $form) {
-            ...ReservationParts
+            id
+            isDropoff
+            isCancelled
+            isComplete
+            isPickedUp
+            isDriverArrived
+            stops {
+                locationLat
+                locationLng
+                isComplete
+                address {
+                    main
+                    sub
+                }
+            }
+            event {
+                id
+                name
+                bio
+                imageUrl
+                timeStart
+                timeEnd
+                reservationsStart
+                publishedAt
+                location {
+                    id
+                    label
+                }
+            }
+            driver {
+                phone
+                user {
+                    name
+                    imageUrl
+                }
+                vehicle {
+                    color
+                    license
+                    make
+                    model
+                    imageUrl
+                }
+            }
             estimate {
-                stopEtas {
-                    eta
+                timeEstimate {
+                    pickup
+                    arrival
                 }
                 queuePosition
             }

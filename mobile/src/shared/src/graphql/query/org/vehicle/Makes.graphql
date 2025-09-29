@@ -1,0 +1,6 @@
+query GetVehicleMakes($year: String!) {
+  vehicles {
+    makes(year: $year)
+  }
+}
+

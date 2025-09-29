@@ -1,0 +1,11 @@
+query GetMeCommonStops {
+    users {
+        me {
+            commonStops {
+                main
+                sub
+                placeId
+            }
+        }
+    }
+}
