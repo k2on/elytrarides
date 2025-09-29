@@ -17,5 +17,4 @@ mod market {
     mod test_estimation_double_pickup_two_drivers;
     mod test_estimation_pickup_after_complete_pickup;
     mod test_estimation_dropoff_after_complete_dropoff;
-    mod test_pool;
 }

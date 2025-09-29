@@ -448,48 +448,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
-name = "backend"
-version = "0.1.0"
-dependencies = [
- "actix",
- "actix-cors",
- "actix-multipart",
- "actix-service",
- "actix-web",
- "async-recursion",
- "async-stream",
- "async-trait",
- "chrono",
- "diesel",
- "dotenv",
- "env_logger",
- "futures",
- "google_maps",
- "itertools",
- "jsonwebtoken",
- "juniper",
- "juniper_actix",
- "juniper_graphql_ws",
- "juniper_subscriptions",
- "kv",
- "log",
- "paste",
- "r2d2",
- "rand",
- "redis",
- "regex",
- "reqwest",
- "sanitize-filename",
- "serde",
- "serde_json",
- "serde_with",
- "thiserror",
- "tokio",
- "url",
- "uuid",
-]
-
-[[package]]
 name = "backoff"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1790,6 +1748,48 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "nujade_backend"
+version = "0.1.0"
+dependencies = [
+ "actix",
+ "actix-cors",
+ "actix-multipart",
+ "actix-service",
+ "actix-web",
+ "async-recursion",
+ "async-stream",
+ "async-trait",
+ "chrono",
+ "diesel",
+ "dotenv",
+ "env_logger",
+ "futures",
+ "google_maps",
+ "itertools",
+ "jsonwebtoken",
+ "juniper",
+ "juniper_actix",
+ "juniper_graphql_ws",
+ "juniper_subscriptions",
+ "kv",
+ "log",
+ "paste",
+ "r2d2",
+ "rand",
+ "redis",
+ "regex",
+ "reqwest",
+ "sanitize-filename",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "thiserror",
+ "tokio",
+ "url",
+ "uuid",
 ]
 
 [[package]]

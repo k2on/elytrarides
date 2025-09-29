@@ -1,5 +1,5 @@
 use std::{str::FromStr, time::Duration, thread};
-use backend::{graphql::reservations::{FormReservation, stops::model::FormReservationStop, ReservationStatus}, market::geocoder::mock_location, types::phone::Phone};
+use nujade_backend::{graphql::reservations::FormReservation, market::geocoder::mock_location, types::phone::Phone};
 use uuid::Uuid;
 
 #[path = "../common.rs"]
@@ -14,15 +14,11 @@ async fn it_estimation_dropoff_after_complete_dropoff() {
     let id_event = common::get_id_event();
     let driver_phone = common::get_driver_phone();
 
-    let rider_phone = Phone::new("+10000000002").expect("Invalid phone number");
-    let rider2_phone = Phone::new("+10000000003").expect("Invalid phone number");
+    let rider_phone = Phone::new("+18002000002").expect("Invalid phone number");
+    let rider2_phone = Phone::new("+18002000003").expect("Invalid phone number");
 
     let id_reservation = Uuid::from_str("15B78E38-3F11-4D47-B9F6-8109FAA5ED16").expect("Invalid uuid");
     let id_reservation2 = Uuid::from_str("81635564-5011-4090-9d48-74de76bf331a").expect("Invalid uuid");
-    let id_stop_from = Uuid::from_str("5dc6d436-45c2-47cd-946e-a1413ec208e0").expect("Invalid uuid");
-    let id_stop_to = Uuid::from_str("8464adeb-bac8-4ac6-8efa-636283cf76ba").expect("Invalid uuid");
-    let id_stop_from2 = Uuid::from_str("9bee2274-1c77-4647-a09f-ded80b2a586f").expect("Invalid uuid");
-    let id_stop_to2 = Uuid::from_str("a52e6289-5b91-4ae7-bd2f-1c24f613abd1").expect("Invalid uuid");
 
     let driver_res = market.driver.find(&id_event, &driver_phone).await;
     assert!(matches!(driver_res, Ok(_)), "Error getting the event driver. Got error: `{:?}`", driver_res);
@@ -34,17 +30,9 @@ async fn it_estimation_dropoff_after_complete_dropoff() {
 
     let form1 = FormReservation {
         passenger_count: 2,
+        is_dropoff: true,
         stops: vec![
-            FormReservationStop {
-                id: id_stop_from,
-                stop_order: 0,
-                location: None,
-            },
-            FormReservationStop {
-                id: id_stop_to,
-                stop_order: 1,
-                location: Some(mock_location::BENET_HALL.stop()),
-            },
+            mock_location::BENET_HALL.stop()
         ]
     };
 
@@ -53,17 +41,9 @@ async fn it_estimation_dropoff_after_complete_dropoff() {
 
     let form2 = FormReservation {
         passenger_count: 1,
+        is_dropoff: true,
         stops: vec![
-            FormReservationStop {
-                id: id_stop_from2,
-                stop_order: 0,
-                location: None,
-            },
-            FormReservationStop {
-                id: id_stop_to2,
-                stop_order: 1,
-                location: Some(mock_location::DOUTHIT.stop()),
-            },
+            mock_location::DOUTHIT.stop(),
         ]
     };
 
@@ -83,8 +63,8 @@ async fn it_estimation_dropoff_after_complete_dropoff() {
     assert!(est_res.is_ok());
     let est = est_res.unwrap();
 
-    assert_eq!(est.stop_etas.get(0).unwrap().eta, 3 * 60);
-    assert_eq!(est.stop_etas.get(1).unwrap().eta, 8 * 60);
+    assert_eq!(est.time_estimate.pickup.num_minutes(), 3);
+    assert_eq!(est.time_estimate.arrival.num_minutes(), 8);
     assert_eq!(est.queue_position, 0);
 
 
@@ -92,11 +72,11 @@ async fn it_estimation_dropoff_after_complete_dropoff() {
     assert!(est_res.is_ok());
     let est = est_res.unwrap();
 
-    assert_eq!(est.stop_etas.get(0).unwrap().eta, 13 * 60);
-    assert_eq!(est.stop_etas.get(1).unwrap().eta, 17 * 60);
+    assert_eq!(est.time_estimate.pickup.num_minutes(), 13);
+    assert_eq!(est.time_estimate.arrival.num_minutes(), 17);
     assert_eq!(est.queue_position, 1);
 
-    let pickup_res = market.driver.next(&id_event, &driver.id).await;
+    let pickup_res = market.driver.pickup(&id_event, &driver.id).await;
     assert!(pickup_res.is_ok());
 
     let res1 = market.reservation.get(&id_reservation).await.unwrap();
@@ -112,23 +92,23 @@ async fn it_estimation_dropoff_after_complete_dropoff() {
     assert!(est_res.is_ok());
     let est = est_res.unwrap();
 
-    assert_eq!(est.stop_etas.get(0).unwrap().eta, 0);
-    assert_eq!(est.stop_etas.get(1).unwrap().eta, 5 * 60);
+    assert_eq!(est.time_estimate.pickup.num_minutes(), 0);
+    assert_eq!(est.time_estimate.arrival.num_minutes(), 5);
     assert_eq!(est.queue_position, 0);
 
     let est_res = market.reservation.estimate(&res2).await;
     assert!(est_res.is_ok());
     let est = est_res.unwrap();
 
-    assert_eq!(est.stop_etas.get(0).unwrap().eta, 10 * 60);
-    assert_eq!(est.stop_etas.get(1).unwrap().eta, 14 * 60);
+    assert_eq!(est.time_estimate.pickup.num_minutes(), 10);
+    assert_eq!(est.time_estimate.arrival.num_minutes(), 14);
     assert_eq!(est.queue_position, 1);
 
-    let dropoff_res = market.driver.next(&id_event, &driver.id).await;
+    let dropoff_res = market.driver.dropoff(&id_event, &driver.id).await;
     assert!(dropoff_res.is_ok());
 
     let res1 = market.reservation.get(&id_reservation).await.unwrap();
-    assert!(matches!(res1.status, ReservationStatus::COMPLETE));
+    assert!(res1.is_complete);
 
     let ping_res = market.driver.ping(&id_event, &driver.id, &mock_location::BENET_HALL_LATLNG).await;
     assert!(ping_res.is_ok(), "Ping failed, got {:?}", ping_res);
@@ -141,7 +121,7 @@ async fn it_estimation_dropoff_after_complete_dropoff() {
     assert!(est_res.is_ok());
     let est = est_res.unwrap();
 
-    assert_eq!(est.stop_etas.get(0).unwrap().eta, 5 * 60);
-    assert_eq!(est.stop_etas.get(1).unwrap().eta, 9 * 60);
+    assert_eq!(est.time_estimate.pickup.num_minutes(), 5);
+    assert_eq!(est.time_estimate.arrival.num_minutes(), 9);
     assert_eq!(est.queue_position, 0);
 }

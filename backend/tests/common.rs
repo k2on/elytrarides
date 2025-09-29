@@ -3,22 +3,22 @@ use std::str::FromStr;
 use actix::SyncArbiter;
 use dotenv::dotenv;
 
-use backend::db_util::{get_pool, DBActor};
+use nujade_backend::db_util::{get_pool, DBActor};
 
-use backend::graphql::drivers::{FormEventDriver, Driver};
-use backend::graphql::drivers::messages::{EventDriverUpdate, EventDriversList};
-use backend::graphql::events::{FormEvent, DBEventInsertable};
-use backend::graphql::events::messages::EventUpdate;
-use backend::graphql::locations::FormLocation;
-use backend::graphql::locations::messages::OrgLocationUpdate;
-use backend::graphql::orgs::messages::OrganizationUpdate;
-use backend::graphql::orgs::model::FormOrganization;
-use backend::graphql::reservations::messages::ReservationsClear;
-use backend::graphql::vehicles::FormVehicle;
-use backend::graphql::vehicles::messages::VehicleUpdate;
-use backend::market::Market;
-use backend::market::geocoder::mock_location;
-use backend::types::phone::Phone;
+use nujade_backend::graphql::drivers::{FormEventDriver, Driver};
+use nujade_backend::graphql::drivers::messages::{EventDriverUpdate, EventDriversList};
+use nujade_backend::graphql::events::{FormEvent, DBEventInsertable};
+use nujade_backend::graphql::events::messages::EventUpdate;
+use nujade_backend::graphql::locations::FormLocation;
+use nujade_backend::graphql::locations::messages::OrgLocationUpdate;
+use nujade_backend::graphql::orgs::messages::OrganizationUpdate;
+use nujade_backend::graphql::orgs::model::FormOrganization;
+use nujade_backend::graphql::reservations::messages::ReservationsClear;
+use nujade_backend::graphql::vehicles::FormVehicle;
+use nujade_backend::graphql::vehicles::messages::VehicleUpdate;
+use nujade_backend::market::Market;
+use nujade_backend::market::geocoder::mock_location;
+use nujade_backend::types::phone::Phone;
 use uuid::Uuid;
 
 pub fn get_id_org() -> Uuid {

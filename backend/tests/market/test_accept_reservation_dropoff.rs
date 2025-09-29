@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use backend::{graphql::{drivers::Driver, reservations::{FormReservation, stops::model::FormReservationStop}}, types::phone::Phone, market::{geocoder::mock_location, estimate::driver::stop::model::DriverStopEstimation}};
+use nujade_backend::{graphql::{drivers::Driver, reservations::FormReservation}, types::phone::Phone, market::{geocoder::mock_location, estimate::driver::stop::model::DriverStopEstimation}};
 use uuid::Uuid;
 
 #[path = "../common.rs"]
@@ -22,7 +22,7 @@ async fn it_accept_dropoff() {
     let ping_res = market.driver.ping(&id_event, &driver.id, &mock_location::TIGER_BLVD_LATLNG).await;
     assert!(ping_res.is_ok(), "Ping failed, got {:?}", ping_res);
 
-    let rider_phone = Phone::new("+10000000002").expect("Invalid phone number");
+    let rider_phone = Phone::new("+18002000002").expect("Invalid phone number");
 
 
     let avaliable_res = market.event.get_avaliable_reservation(&id_event, &driver.id).await;
@@ -32,28 +32,13 @@ async fn it_accept_dropoff() {
     assert!(avaliable.is_none());
 
     let id_reservation = Uuid::from_str("15b78e38-3f11-4d47-b9f6-8109faa5ed16").expect("Invalid uuid");
-    let id_stop_from = Uuid::from_str("510b256f-d333-4d58-8a48-bcb28df618d4").expect("Invalid uuid");
-    let id_stop_to_1 = Uuid::from_str("ab955a0e-a78a-49e9-9e39-5847a62f2302").expect("Invalid uuid");
-    let id_stop_to_2 = Uuid::from_str("4298abbe-b8ad-4cdc-aff3-355b4fe328aa").expect("Invalid uuid");
 
     let form = FormReservation {
         passenger_count: 2,
+        is_dropoff: true,
         stops: vec![
-            FormReservationStop {
-                id: id_stop_from,
-                stop_order: 0,
-                location: None,
-            },
-            FormReservationStop {
-                id: id_stop_to_1,
-                stop_order: 1,
-                location: Some(mock_location::BENET_HALL.stop()),
-            },
-            FormReservationStop {
-                id: id_stop_to_2,
-                stop_order: 2,
-                location: Some(mock_location::DOUTHIT.stop()),
-            },
+            mock_location::BENET_HALL.stop(),
+            mock_location::DOUTHIT.stop(),
         ]
     };
 
@@ -99,9 +84,7 @@ async fn it_accept_dropoff() {
     assert!(driver_strat.dest.is_some());
     assert_eq!(driver_strat.queue.len(), 2);
 
-    assert_eq!(driver_strat.dest.clone().unwrap().stop.id_stop, id_stop_from);
-    assert!(driver_strat.dest.clone().unwrap().stop.is_event_location);
-    assert_eq!(driver_strat.queue.get(0).clone().unwrap().stop.id_stop, id_stop_to_1);
-    assert_eq!(driver_strat.queue.get(1).clone().unwrap().stop.id_stop, id_stop_to_2);
-
+    assert!(matches!(driver_strat.dest, Some(DriverStopEstimation::Event(_))));
+    assert!(if let Some(DriverStopEstimation::Reservation(res)) = driver_strat.queue.get(0) { res.id_reservation.eq(&id_reservation) && res.order.eq(&0) } else { false });
+    assert!(if let Some(DriverStopEstimation::Reservation(res)) = driver_strat.queue.get(1) { res.id_reservation.eq(&id_reservation) && res.order.eq(&1) } else { false });
 }

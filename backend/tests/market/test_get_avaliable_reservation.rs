@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use backend::{graphql::reservations::{FormReservation, stops::model::FormReservationStop}, types::phone::Phone, market::geocoder::mock_location};
+use nujade_backend::{graphql::reservations::FormReservation, types::phone::Phone, market::geocoder::mock_location};
 use uuid::Uuid;
 
 #[path = "../common.rs"]
@@ -23,7 +23,7 @@ async fn it_get_avaliable_reservation() {
     let ping_res = market.driver.ping(&id_event, &driver.id, &mock_location::TIGER_BLVD_LATLNG).await;
     assert!(ping_res.is_ok());
 
-    let rider_phone = Phone::new("+10000000002").expect("Invalid phone number");
+    let rider_phone = Phone::new("+18002000002").expect("Invalid phone number");
 
 
     let avaliable_res = market.event.get_avaliable_reservation(&id_event, &driver.id).await;
@@ -33,22 +33,12 @@ async fn it_get_avaliable_reservation() {
     assert!(avaliable.is_none());
 
     let id_reservation = Uuid::from_str("15b78e38-3f11-4d47-b9f6-8109faa5ed16").expect("Invalid uuid");
-    let id_stop_from = Uuid::from_str("95ee9c88-84c2-49a0-95b2-f9334df9e899").expect("Invalid uuid");
-    let id_stop_to = Uuid::from_str("9da01fbf-38ca-4c42-a275-ed5ae36b502d").expect("Invalid uuid");
 
     let form = FormReservation {
         passenger_count: 2,
+        is_dropoff: false,
         stops: vec![
-            FormReservationStop {
-                id: id_stop_from,
-                stop_order: 0,
-                location: Some(mock_location::BENET_HALL.stop())
-            },
-            FormReservationStop {
-                id: id_stop_to,
-                stop_order: 1,
-                location: None,
-            },
+            mock_location::BENET_HALL.stop()
         ]
     };
 

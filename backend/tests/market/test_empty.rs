@@ -1,4 +1,4 @@
-use backend::{graphql::drivers::Driver, market::geocoder::mock_location};
+use nujade_backend::{graphql::drivers::Driver, schema::reservations::id_driver, market::geocoder::mock_location};
 
 #[path = "../common.rs"]
 mod common;

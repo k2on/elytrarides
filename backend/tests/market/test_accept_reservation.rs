@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use backend::{graphql::reservations::{FormReservation, stops::model::FormReservationStop}, types::phone::Phone, market::{geocoder::mock_location, estimate::driver::stop::model::DriverStopEstimation}};
+use nujade_backend::{graphql::reservations::FormReservation, types::phone::Phone, market::{geocoder::mock_location, estimate::driver::stop::model::DriverStopEstimation}};
 use uuid::Uuid;
 
 #[path = "../common.rs"]
@@ -24,7 +24,7 @@ async fn it_accept_pickup() {
     assert!(ping_res.is_ok(), "Ping failed, got {:?}", ping_res);
 
 
-    let rider_phone = Phone::new("+10000000002").expect("Invalid phone number");
+    let rider_phone = Phone::new("+18002000002").expect("Invalid phone number");
 
 
     let avaliable_res = market.event.get_avaliable_reservation(&id_event, &driver.id).await;
@@ -34,22 +34,12 @@ async fn it_accept_pickup() {
     assert!(avaliable.is_none());
 
     let id_reservation = Uuid::from_str("15b78e38-3f11-4d47-b9f6-8109faa5ed16").expect("Invalid uuid");
-    let id_stop_from = Uuid::from_str("abbcc1a2-c461-415c-829d-9d6b7d697ca2").expect("Invalid uuid");
-    let id_stop_to = Uuid::from_str("dfe595ef-3a30-4f29-947c-e29a0cfbed38").expect("Invalid uuid");
 
     let form = FormReservation {
         passenger_count: 2,
+        is_dropoff: false,
         stops: vec![
-            FormReservationStop {
-                id: id_stop_from,
-                stop_order: 0,
-                location: Some(mock_location::BENET_HALL.stop())
-            },
-            FormReservationStop {
-                id: id_stop_to,
-                stop_order: 1,
-                location: None,
-            },
+            mock_location::BENET_HALL.stop()
         ]
     };
 
@@ -95,7 +85,7 @@ async fn it_accept_pickup() {
     assert!(driver_strat.dest.is_some());
     assert_eq!(driver_strat.queue.len(), 1);
 
-    assert_eq!(driver_strat.dest.clone().unwrap().stop.id_stop, id_stop_from);
-    assert_eq!(driver_strat.queue.first().clone().unwrap().stop.id_stop, id_stop_to);
-    assert!(driver_strat.queue.first().clone().unwrap().stop.is_event_location);
+    let dest = driver_strat.clone().dest.unwrap();
+    assert!(if let DriverStopEstimation::Reservation(res) = dest { res.id_reservation.eq(&id_reservation) } else { false });
+    assert!(matches!(driver_strat.queue.first(), Some(DriverStopEstimation::Event(_))));
 }
