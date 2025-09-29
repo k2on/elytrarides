@@ -29,3 +29,12 @@ export function formatTime(milliseconds: number): string {
     return `${paddedHours}:${paddedMinutes}:${paddedSeconds}`;
 }
 
+export function getStopLocation(stop: NonNullable<DriverPingMutation["drivers"]["ping"]["dest"]>, event: GetMeQueryEvent): LatLng {
+    if (stop.__typename == "DriverStopEstimationEvent") {
+        const loc = event.location;
+        if (!loc) throw Error("Event has no location");
+        return { lat: loc.locationLat, lng: loc.locationLng };
+    } else {
+        return stop.location.coords;
+    }
+}

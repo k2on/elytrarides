@@ -11,10 +11,10 @@ export default function Header() {
     if (!event) return <Text>No event</Text>;
 
 
-    const icon = "map-marker";
+    const icon = dest.__typename == "DriverStopEstimationEvent" ? "home-import-outline" : "map-marker";
     
-    const name = dest.stop.addressMain;
-    const bottom = dest.stop.addressSub;
+    const name = dest.__typename == "DriverStopEstimationEvent" ? event.location?.label || "Event" : dest.location.address.main;
+    const bottom = dest.__typename == "DriverStopEstimationEvent" ? null : dest.location.address.sub;
 
     return <View className="bg-zinc-950 m-2 p-4 rounded-md flex-row items-center">
             <Icons name={icon} color="white" size={25} />

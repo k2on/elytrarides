@@ -4,6 +4,7 @@ import { TouchableOpacity } from "react-native-gesture-handler";
 import { LatLng } from "@/shared";
 import { ContextDrive } from "./context";
 import Icons from "react-native-vector-icons/MaterialCommunityIcons";
+import { getStopLocation } from "./util";
 import { NAVIGATION_APP_KEY, NavigationApp } from "@/const";
 import { getItemAsync } from "expo-secure-store";
 
@@ -15,7 +16,7 @@ export default function Navigate() {
     if (!dest) throw Error("unreachable");
     if (!event) return <Text>Loading...</Text>
 
-    const location = { lat: dest.stop.lat, lng: dest.stop.lng };
+    const location = getStopLocation(dest, event);
 
     useEffect(() => {
         getItemAsync(NAVIGATION_APP_KEY).then(result => {

@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { Linking, Platform, Pressable, Text, View, Image, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useConfirmArrivalMutation, useNextStopMutation } from "@/shared";
+import { useConfirmArrivalMutation, useConfirmDropoffMutation, useConfirmPickupMutation } from "@/shared";
 import { Overlay, BigButt } from "@/components";
 import { AuthContext } from "@/app/state";
 import { ActionTypeDrive, ContextDrive, ContextDriveDispatch } from "../context";
@@ -15,7 +15,7 @@ export default function Dest() {
 
     const { getClient } = useContext(AuthContext)!;
     const client = getClient();
-    const { dest, queue, driver, event, pickedUp, reservations } = useContext(ContextDrive)!;
+    const { dest, queue, driver, event, pickedUp } = useContext(ContextDrive)!;
     const dispatch = useContext(ContextDriveDispatch)!;
 
 
@@ -35,12 +35,24 @@ export default function Dest() {
         },
     });
 
-    const { mutate: next } = useNextStopMutation(client, {
+    const { mutate: pickup } = useConfirmPickupMutation(client, {
         onSuccess(data, variables, context) {
-            const { dest, queue, pickedUp, reservations } = data.drivers.next;
-            setIsArrived(false);
-            dispatch({ type: ActionTypeDrive.SET_STRAT, dest, queue, pickedUp, reservations });
+            const { dest, queue, pickedUp } = data.drivers.confirmPickup;
+            dispatch({ type: ActionTypeDrive.SET_STRAT, dest, queue, pickedUp });
             
+        },
+        onError(error, variables, context) {
+            console.error(error);
+        },
+        onSettled(data, error, variables, context) {
+            setIsLoading(false);
+        },
+    });
+
+    const { mutate: dropoff } = useConfirmDropoffMutation(client, {
+        onSuccess(data, variables, context) {
+            const { dest, queue, pickedUp } = data.drivers.confirmDropoff;
+            dispatch({ type: ActionTypeDrive.SET_STRAT, dest, queue, pickedUp });
         },
         onError(error, variables, context) {
             console.error(error);
@@ -52,12 +64,20 @@ export default function Dest() {
 
     if (!dest) return <Text>Dest not set</Text>;
 
-    const onNextStop = () => {
+    const onConfirmPickup = () => {
         setIsLoading(true);
         if (!driver) return console.error("driver is null");
         if (!event) return console.error("event is null");
 
-        next({ idEvent: event.id, idDriver: driver.id });
+        pickup({ idEvent: event.id, idDriver: driver.id });
+    };
+
+    const onConfirmDropoff = () => {
+        setIsLoading(true);
+        if (!driver) return console.error("driver is null");
+        if (!event) return console.error("event is null");
+
+        dropoff({ idEvent: event.id, idDriver: driver.id });
     };
 
     const onArrive = () => {
@@ -70,46 +90,56 @@ export default function Dest() {
 
     function getDestReservation() {
         if (!dest) throw Error("No dest");
-        for (const res of reservations) {
-            if (res.id == dest.stop.idReservation) {
-                return res;
-
-            }
+        if (dest.__typename == "DriverStopEstimationReservation") return dest;
+        for (const stop of queue) {
+            if (stop.__typename == "DriverStopEstimationReservation") return stop;
         }
-        throw Error("Reservation not found");
+        return null;
     }
 
     const curr = getDestReservation();
 
-    const isLastStop = queue.length == 0;
-    const isFirstStop = pickedUp.length == 0;
-    
     const bottom = (
         <View>
-            {dest && <View className="mx-4 flex-row justify-center items-center py-6">
+            {curr && <View className="mx-4 flex-row justify-center items-center py-6">
                     <Image className="absolute left-0 w-12 h-12 rounded-full"
-                        source={{ uri: curr.reserver.imageUrl || DEFAULT_USER_IMAGE }}
+                        source={{ uri: curr.reservation.reserver.imageUrl || DEFAULT_USER_IMAGE }}
                     />
                     <View>
-                        <Text className="text-xl font-semibold text-white text-center">{curr.reserver.name.split(" ")[0]}</Text>
-                        <Text className="text-gray-300 text-center">{dest.stop.passengers} {dest.stop.passengers == 1 ? "Passenger" : "Passengers"}</Text>
+                        <Text className="text-xl font-semibold text-white text-center">{curr.reservation.reserver.name.split(" ")[0]}</Text>
+                        <Text className="text-gray-300 text-center">{curr.passengers} {curr.passengers == 1 ? "Passenger" : "Passengers"}</Text>
                     </View>
                     <TouchableOpacity
                         className="absolute right-0 w-12 h-12 rounded-full bg-black justify-center items-center"
-                        onPress={() => dialCall(curr.reserver.phone)}
+                        onPress={() => dialCall(curr.reservation.reserver.phone)}
                     >
                         <Text className="text-white">
                             <Icons name="phone" color="gray" size={25} />
                         </Text>
                     </TouchableOpacity>
             </View>}
-            {!isArrived
-            ? <BigButt title="Arrive" on_click={() => { onArrive() }} is_loading={isLoading} />
-            : isLastStop
-            ? <Slider onSlide={onNextStop} title="Complete Ride" color="rgb(220 38 38)" colorDark="rgb(185 28 28)" isLoading={isLoading} />
-            : isFirstStop
-            ? <Slider onSlide={onNextStop} title="Confirm Pickup" color="rgb(22 163 74)" colorDark="rgb(21 128 61)" isLoading={isLoading} />
-            : <Slider onSlide={onNextStop} title="Complete Stop" color="rgb(22 163 74)" colorDark="rgb(21 128 61)" isLoading={isLoading} />}
+            {dest.__typename == "DriverStopEstimationEvent"
+            ? pickedUp.length > 0
+            ? <Slider onSlide={onConfirmDropoff} title="Complete Ride" color="rgb(220 38 38)" colorDark="rgb(185 28 28)" isLoading={isLoading} />
+            // <BigButt title="Confirm Dropoff At Event" on_click={onConfirmDropoff} is_loading={isLoading} />
+            : isArrived
+            ? <Slider onSlide={onConfirmPickup} title="Confirm Pickup" color="rgb(22 163 74)" colorDark="rgb(21 128 61)" isLoading={isLoading} />
+            : <BigButt title="Arrive" on_click={() => { setIsArrived(true); onArrive() }} is_loading={isLoading} />
+            : dest.isDropoff
+            ? <Slider onSlide={onConfirmDropoff} title="Confirm Dropoff" color="rgb(220 38 38)" colorDark="rgb(185 28 28)" isLoading={isLoading} />
+            : isArrived
+            ? <Slider onSlide={onConfirmPickup} title="Confirm Pickup" color="rgb(22 163 74)" colorDark="rgb(21 128 61)" isLoading={isLoading} />
+            
+            
+            // <BigButt title="Confirm Pickup" on_click={onConfirmPickup} is_loading={isLoading} />
+            : <BigButt
+                title="Arrive" on_click={() => {
+                    setIsArrived(true);
+                    onArrive();
+                }}
+                is_loading={isLoading} 
+                />
+                }
         </View>
     );
 

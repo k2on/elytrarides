@@ -10,7 +10,6 @@ export interface StateDrive {
     dest: DriverPingMutation["drivers"]["ping"]["dest"];
     queue: DriverPingMutation["drivers"]["ping"]["queue"];
     pickedUp: DriverPingMutation["drivers"]["ping"]["pickedUp"];
-    reservations: DriverPingMutation["drivers"]["ping"]["reservations"];
     event: EventForDriver | null;
     driver: GetMeQueryEvent["drivers"][0] | null;
     avaliableReservation: GetAvaliableReservationQuery["events"]["get"]["avaliableReservation"];
@@ -41,7 +40,6 @@ interface ActionDriveSetStrat {
     dest: DriverPingMutation["drivers"]["ping"]["dest"];
     queue: DriverPingMutation["drivers"]["ping"]["queue"];
     pickedUp: DriverPingMutation["drivers"]["ping"]["pickedUp"];
-    reservations: DriverPingMutation["drivers"]["ping"]["reservations"];
 }
 
 interface ActionDriveSetAvaliableReservation {
@@ -61,7 +59,6 @@ export const INITAL_DRIVE_STATE: StateDrive = {
     queue: [],
     event: null,
     driver: null,
-    reservations: [],
     pickedUp: [],
     avaliableReservation: null,
     lastPingAt: new Date(0),
@@ -75,7 +72,7 @@ export function reducer(state: StateDrive, action: Action): StateDrive {
         case ActionTypeDrive.SET_EVENT:
             return {...state, ...{ event: action.event, driver: action.driver }};
         case ActionTypeDrive.SET_STRAT:
-            return {...state, ...{ isLoading: false, dest: action.dest, queue: action.queue, pickedUp: action.pickedUp, reservations: action.reservations, lastPingAt: new Date() }};
+            return {...state, ...{ isLoading: false, dest: action.dest, queue: action.queue, pickedUp: action.pickedUp, lastPingAt: new Date() }};
         case ActionTypeDrive.SET_AVALIABLE_RESERVATION:
             return {...state, ...{ lastAvaliableReservationAt: new Date(), avaliableReservation: action.reservation }}
     }

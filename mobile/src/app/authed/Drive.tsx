@@ -131,7 +131,7 @@ export default function Drive({ route }: PropsDrive) {
             }
 
 
-            const { dest, queue, pickedUp, reservations } = data.drivers.ping;
+            const { dest, queue, pickedUp } = data.drivers.ping;
 
             // const isNewRes = state.queue.length == 0 && queue.length > 0;
             const isNew = isNewDest(state.dest, dest);
@@ -140,7 +140,7 @@ export default function Drive({ route }: PropsDrive) {
                 showCancelledRes();
             }
 
-            dispatch({ type: ActionTypeDrive.SET_STRAT, dest, queue, pickedUp, reservations });
+            dispatch({ type: ActionTypeDrive.SET_STRAT, dest, queue, pickedUp });
 
 
             if (!dest) {
