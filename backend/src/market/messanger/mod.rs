@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::graphql::{reservations::Reservation, geo::model::LatLng};
 
-use super::{types::{MarketResult, StreamMessageMarket}, messages::MessageMarket, strategy::model::IdEventDriver, estimate::driver::stop::model::DriverStopEstimation};
+use super::{types::{MarketResult, StreamMessageMarket}, messages::MessageMarket, strategy::model::IdEventDriver};
 pub mod redis;
 pub mod mock;
 
@@ -28,8 +28,8 @@ impl dyn Messanger {
         Ok(())
     }
 
-    pub async fn send_reservation_estimate(&self, id_reservation: &Uuid, stop_etas: Vec<DriverStopEstimation>, queue_position: i32) -> MarketResult<()> {
-        let message = MessageMarket::new_reservation_estimate(stop_etas, queue_position);
+    pub async fn send_reservation_estimate(&self, id_reservation: &Uuid, pickup: Duration, arrival: Duration, queue_position: i32) -> MarketResult<()> {
+        let message = MessageMarket::new_reservation_estimate(pickup, arrival, queue_position);
         self.send_reservation(id_reservation, message.clone()).await?;
         Ok(())
     }

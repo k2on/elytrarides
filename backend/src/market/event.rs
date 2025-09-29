@@ -5,11 +5,11 @@ use chrono::Duration;
 use kv::Store;
 use uuid::Uuid;
 
-use crate::{db_util::DBActor, graphql::{reservations::{messages::{ReservationsInPool, ReservationRemoveDriver, ReservationGet, ReservationGetWithoutStops}, FormReservation, Reservation, DBReservation, stops::model::{ReservationStops, FormReservationStop, FormLatLng, FormReservationStopLocation, ReservationInputStop}, ReservationStatus, ReservationInput, ReservationWithStops, AvaliableReservation}, geo::model::LatLng, locations::OrgLocation, events::{messages::{EventLocationGet, GetActiveEvents, EventGet}, Event}, drivers::{Driver, messages::EventDriversList, DriverWithVehicle}, colleges::model::College}, market::util::now, types::phone::Phone};
+use crate::{db_util::DBActor, graphql::{reservations::{messages::{ReservationsInPool, ReservationRemoveDriver}, FormReservation, Reservation, DBReservation, stops::model::{ReservationStops, FormReservationStop, FormLatLng}, FormReservationGeocoded}, geo::model::LatLng, locations::OrgLocation, events::{messages::{EventLocationGet, GetActiveEvents}, Event}, drivers::{Driver, messages::EventDriversList, DriverWithVehicle}, colleges::model::College}, market::util::now};
 
 use self::cache::MarketEventCache;
 
-use super::{types::{MarketResult, ReservationEstimate, TimeEstimate}, error::ErrorMarket, vehicle::MarketVehicle, geocoder::Geocoder, messanger::Messanger, util::add_reservation_arrivals_to_queue, strategy::{driver::{stop::{model::DriverStop, reservation::location::model::Address}, model::DriverStrategy}, model::{Strategy, IdEventDriver}}, estimate::{model::StrategyEstimations, driver::{model::DriverStrategyEstimations, stop::model::DriverStopEstimation}}};
+use super::{types::{MarketResult, ReservationEstimate, TimeEstimate}, error::ErrorMarket, vehicle::MarketVehicle, geocoder::Geocoder, messanger::Messanger, util::add_reservation_arrivals_to_queue, strategy::{driver::{stop::model::DriverStop, model::DriverStrategy}, model::{Strategy, IdEventDriver}}, estimate::{model::StrategyEstimations, driver::{model::DriverStrategyEstimations, stop::model::DriverStopEstimation}}};
 
 pub mod cache;
 
@@ -32,8 +32,6 @@ impl Clone for MarketEvent {
         }
     }
 }
-
-type DriverPairScore = f64;
 
 impl MarketEvent {
     pub fn new(db: Addr<DBActor>, geocoder: Box<dyn Geocoder>, messanger: Box<dyn Messanger>, kv: Store, vehicle: MarketVehicle) -> Self {
@@ -139,17 +137,21 @@ impl MarketEvent {
     #[doc = "Estimate a driver strategy"]
     async fn get_driver_estimates(&self, id_event: &Uuid, driver_strategy: &DriverStrategy) -> MarketResult<DriverStrategyEstimations> {
         let dest_est = self.get_estimate_driver_cached(id_event, driver_strategy).await?
-            .unwrap_or(0);
+            .unwrap_or(Duration::seconds(0));
 
         let queue = self.get_driver_queue_estimates(id_event, driver_strategy, dest_est).await?;
 
-        let dest = driver_strategy.dest.clone().map(|d| d.to_est(dest_est));
+        let dest = match &driver_strategy.dest {
+            Some(DriverStop::Reservation(reservation)) => Some(DriverStopEstimation::new_res(reservation.clone(), dest_est)),
+            Some(DriverStop::Event(_)) => Some(DriverStopEstimation::new_event(dest_est)),
+            None => None
+        };
         let estimated = DriverStrategyEstimations::new(driver_strategy.clone(), dest, queue);
         Ok(estimated)
     }
 
     #[doc = "Get estimations for a driver queue"]
-    async fn get_driver_queue_estimates(&self, id_event: &Uuid, driver_strategy: &DriverStrategy, dest_est: i32) -> MarketResult<Vec<DriverStopEstimation>> {
+    async fn get_driver_queue_estimates(&self, id_event: &Uuid, driver_strategy: &DriverStrategy, dest_est: Duration) -> MarketResult<Vec<DriverStopEstimation>> {
         let queue_pickups = self.get_driver_queue_estimates_without_res_arrivals(id_event, driver_strategy, dest_est).await?;
         let queue = add_reservation_arrivals_to_queue(queue_pickups);
         Ok(queue)
@@ -157,7 +159,7 @@ impl MarketEvent {
     }
 
     #[doc = "Get the estimations for a queue without the reservation arrival times"]
-    async fn get_driver_queue_estimates_without_res_arrivals(&self, id_event: &Uuid, driver_strategy: &DriverStrategy, dest_est: i32) -> MarketResult<Vec<DriverStopEstimation>> {
+    async fn get_driver_queue_estimates_without_res_arrivals(&self, id_event: &Uuid, driver_strategy: &DriverStrategy, dest_est: Duration) -> MarketResult<Vec<DriverStopEstimation>> {
         let mut last_est = dest_est;
         let mut last_stop = driver_strategy.dest.clone();
         let mut queue = Vec::new();
@@ -172,7 +174,11 @@ impl MarketEvent {
                     // println!("stop: {last:?}");
                     // println!("est: {est_between:?}");
                     last_est = last_est + est_between;
-                    queue.push(stop.to_est(last_est));
+                    let stop = match stop {
+                        DriverStop::Reservation(res) => DriverStopEstimation::new_res(res.clone(), last_est),
+                        DriverStop::Event(_) => DriverStopEstimation::new_event(last_est),
+                    };
+                    queue.push(stop);
                 },
                 None => (),
             }
@@ -182,7 +188,7 @@ impl MarketEvent {
     }
 
     #[doc = "Get stop estimation"]
-    async fn get_stop_estimation(&self, id_event: &Uuid, from: &DriverStop, to: &DriverStop) -> MarketResult<i32> {
+    async fn get_stop_estimation(&self, id_event: &Uuid, from: &DriverStop, to: &DriverStop) -> MarketResult<Duration> {
         match self.cache.get_estimate_between_stops(id_event, from, to)? {
             Some(est) => Ok(est),
             None => self.refresh_and_get_stop_estimate(id_event, from, to).await,
@@ -190,7 +196,7 @@ impl MarketEvent {
     }
 
     #[doc = "Gets the driver estimation to their destination, if none exists, will calculate and store it in cache."]
-    async fn get_estimate_driver_cached(&self, id_event: &Uuid, driver_strategy: &DriverStrategy) -> MarketResult<Option<i32>> {
+    async fn get_estimate_driver_cached(&self, id_event: &Uuid, driver_strategy: &DriverStrategy) -> MarketResult<Option<Duration>> {
         if let Some(_) = &driver_strategy.dest {
             match self.cache.get_estimate_driver(id_event, &driver_strategy)? {
                 Some(est) => Ok(Some(est)),
@@ -201,12 +207,13 @@ impl MarketEvent {
         }
     }
 
-    async fn refresh_and_get_driver_estimate(&self, id_event: &Uuid, driver_strategy: &DriverStrategy) -> MarketResult<i32> {
+    async fn refresh_and_get_driver_estimate(&self, id_event: &Uuid, driver_strategy: &DriverStrategy) -> MarketResult<Duration> {
         println!("refresh driver");
         let driver_location = self.cache.get_driver_location(&driver_strategy.id)?;
         match (&driver_strategy.dest, driver_location) {
             (Some(dest), Some(location)) => {
-                let est = self.geocoder.estimate(location, dest.latlng()).await?.num_seconds() as i32;
+                let dest_location = self.get_stop_location(id_event, dest.to_owned()).await?;
+                let est = self.geocoder.estimate(location, dest_location).await?;
                 self.cache.update_estimate_driver(id_event, &driver_strategy, est.clone())?;
                 Ok(est)
             },
@@ -215,37 +222,27 @@ impl MarketEvent {
         }
     }
 
-    async fn refresh_and_get_stop_estimate(&self, id_event: &Uuid, stop_from: &DriverStop, stop_to: &DriverStop) -> MarketResult<i32> {
-        // println!("refresh stop");
-        let est = self.geocoder.estimate(stop_from.latlng(), stop_to.latlng()).await?.num_seconds() as i32;
+    async fn refresh_and_get_stop_estimate(&self, id_event: &Uuid, stop_from: &DriverStop, stop_to: &DriverStop) -> MarketResult<Duration> {
+        println!("refresh stop");
+        let from = self.get_stop_location(id_event, stop_from.clone()).await?;
+        let to = self.get_stop_location(id_event, stop_to.clone()).await?;
+        let est = self.geocoder.estimate(from, to).await?;
         self.cache.update_estimate_stop(id_event, stop_from, stop_to, est)?;
         Ok(est)
     }
 
-    #[doc = "Get an avaliable reservation for an event and driver"]
-    pub async fn get_avaliable_reservation(&self, id_event: &Uuid, id_driver: &IdEventDriver) -> MarketResult<Option<AvaliableReservation>> {
-        let driver = self
-            .get_estimates_with_pool(id_event).await?
-            .driver(id_driver)?;
-        match &driver.dest {
-            Some(dest) => {
-                let id_reservation = dest.stop.id_reservation;
-                let mut stops_for_res: Vec<DriverStopEstimation> = driver.queue.iter()
-                    .filter(|stop| stop.stop.id_reservation.eq(&id_reservation))
-                    .cloned()
-                    .collect();
-
-                stops_for_res.insert(0, dest.clone());
-
-                let reservation = self.db.send(ReservationGetWithoutStops { id: id_reservation }).await??;
-
-                Ok(Some(AvaliableReservation {
-                    reservation,
-                    stops: stops_for_res,
-                }))
-            }
-            None => Ok(None)
+    #[doc = "Get the location of a driver stop, will return the event property location if it is an event, otherwise, will return the location of the reservation"]
+    async fn get_stop_location(&self, id_event: &Uuid, stop: DriverStop) -> MarketResult<LatLng> {
+        match stop {
+            DriverStop::Event(_) => self.get_property_location_cached(id_event).await,
+            DriverStop::Reservation(res) => Ok(res.latlng()),
         }
+    }
+
+    #[doc = "Get an avaliable reservation for an event and driver"]
+    pub async fn get_avaliable_reservation(&self, id_event: &Uuid, _id_driver: &IdEventDriver) -> MarketResult<Option<Reservation>> {
+        let pool = self.get_pool(id_event).await?; // TODO: cache this
+        Ok(pool.first().cloned())
     }
 
     #[doc = "Get a cached strategy, if one is not found, create one and set it in cache, then return it"]
@@ -303,15 +300,13 @@ impl MarketEvent {
             match driver.estimate_reservation(reservation) {
                 Ok(est) => Ok(est),
                 Err(ErrorMarket::ReservationNotInStrategy) => {
-                    self.db.send(ReservationRemoveDriver { id: reservation.id.to_owned() }).await??;
-                    let reservation = self.db.send(ReservationGet { id: reservation.id }).await??;
-
+                    let reservation: Reservation = self.db.send(ReservationRemoveDriver { id: reservation.id.to_owned() }).await??.into();
                     self.get_estimate_reservation(&reservation).await
                 }
                 Err(err) => Err(err),
             }
         } else {
-            Ok(self.get_no_drivers_estimation(reservation)) // FIXME: THIS WILL ONLY RETURN 2 STOP ETAS
+            Ok(self.get_no_drivers_estimation())
         }
     }
 
@@ -329,37 +324,77 @@ impl MarketEvent {
         let mut pool = self.get_pool(&id_event).await?;
 
         let id_temp = Uuid::new_v4();
-
-        let input = self.process_reserveration_input(id_event, form).await?;
-        let reservation = input.to_reservation(id_event, &id_temp, Phone::new("+10000000000").unwrap());
-
-        pool.push(reservation.clone());
+        let form = self.geocoder.geocode_form(form).await?;
+        let res_temp: Reservation = DBReservation {
+            id: id_temp,
+            id_event: id_event.to_owned(),
+            made_at: now(),
+            reserver: String::from("+18002000000"),
+            passenger_count: form.passenger_count,
+            is_cancelled: false,
+            cancelled_at: None,
+            id_driver: None,
+            is_complete: false,
+            complete_at: None,
+            stops: ReservationStops::new(form.stops),
+            is_dropoff: form.is_dropoff,
+            is_driver_arrived: false,
+            driver_arrived_at: None,
+            est_pickup: 0,
+            est_dropoff: 0,
+            rating: None,
+            feedback: None,
+            rated_at: None,
+            cancel_reason: None,
+            cancel_reason_at: None,
+        }.into();
+        pool.push(res_temp.clone());
 
         let (_, driver) = self.assign_reservations_to_strategy(&id_event, strategy, pool, Some(id_temp)).await?;
         if let Some(driver) = driver {
-            println!("{:#?}", driver);
-            let est = driver.estimate_reservation(&reservation)?;
+            let est = driver.estimate_reservation(&res_temp)?;
             Ok(est)
         } else {
-            Ok(self.get_no_drivers_estimation(&reservation))
+            Ok(self.get_no_drivers_estimation())
         }
     }
 
     #[doc = "Estimate the pickup time of reservation about to be created"]
-    pub async fn get_estimate_reservation_preinsert(&self, id_event: &Uuid, id_reservation: &Uuid, input: &ReservationInput) -> MarketResult<ReservationEstimate> {
+    pub async fn get_estimate_reservation_preinsert(&self, id_event: &Uuid, id_reservation: &Uuid, form_geocoded: &FormReservationGeocoded) -> MarketResult<ReservationEstimate> {
         let strategy = self.get_estimates(&id_event).await?;
         let mut pool = self.get_pool(&id_event).await?;
 
-        let reservation = input.to_reservation(id_event, id_reservation, Phone::new("+10000000000").unwrap());
-
-        pool.push(reservation.clone());
+        let res_temp: Reservation = DBReservation {
+            id: *id_reservation,
+            id_event: id_event.to_owned(),
+            made_at: now(),
+            reserver: String::from("+18002000000"),
+            passenger_count: form_geocoded.passenger_count,
+            is_cancelled: false,
+            cancelled_at: None,
+            id_driver: None,
+            is_complete: false,
+            complete_at: None,
+            stops: ReservationStops::new(form_geocoded.stops.clone()),
+            is_dropoff: form_geocoded.is_dropoff,
+            is_driver_arrived: false,
+            driver_arrived_at: None,
+            est_pickup: 0,
+            est_dropoff: 0,
+            rating: None,
+            feedback: None,
+            rated_at: None,
+            cancel_reason: None,
+            cancel_reason_at: None,
+        }.into();
+        pool.push(res_temp.clone());
 
         let (_, driver) = self.assign_reservations_to_strategy(&id_event, strategy, pool, Some(*id_reservation)).await?;
         if let Some(driver) = driver {
-            let est = driver.estimate_reservation(&reservation)?;
+            let est = driver.estimate_reservation(&res_temp)?;
             Ok(est)
         } else {
-            Ok(self.get_no_drivers_estimation(&reservation))
+            Ok(self.get_no_drivers_estimation())
         }
     }
 
@@ -372,51 +407,59 @@ impl MarketEvent {
         let id = Uuid::from_str("f8272da1-e043-46a8-a5f7-ca922d7da52a").unwrap();
         let form_raw = FormReservation {
             passenger_count: 1,
+            is_dropoff: false,
             stops: vec![
                 FormReservationStop {
-                    id: Uuid::from_str("32420f81-2690-4e48-a32f-4f8f256af199").unwrap(),
-                    stop_order: 0,
-                    location: Some(FormReservationStopLocation {
-                        location: college.latlng_form(),
-                        place_id: None,
-                        address: String::from("Campus")
-                    })
-                },
-                FormReservationStop {
-                    id: Uuid::from_str("cd2163e4-f630-40d9-b596-216866a0fc25").unwrap(),
-                    stop_order: 1,
-                    location: None,
-                },
+                    location: college.latlng_form(),
+                    place_id: String::from(""), // Google geocoder will not try to geocode this
+                    address: String::from("Campus")
+                }
             ]
         };
-        let input = self.process_reserveration_input(id_event, &form_raw).await?;
-        let reservation = input.to_reservation(&id, id_event, Phone::new("+10000000000").unwrap());
-
-        pool.push(reservation.clone());
+        let form = self.geocoder.geocode_form(&form_raw).await?;
+        let res_temp: Reservation = DBReservation {
+            id,
+            id_event: id_event.to_owned(),
+            made_at: now(),
+            reserver: String::from("+18002000000"),
+            passenger_count: form.passenger_count,
+            is_cancelled: false,
+            cancelled_at: None,
+            id_driver: None,
+            is_complete: false,
+            complete_at: None,
+            stops: ReservationStops::new(form.stops),
+            is_dropoff: form.is_dropoff,
+            is_driver_arrived: false,
+            driver_arrived_at: None,
+            est_pickup: 0,
+            est_dropoff: 0,
+            rating: None,
+            feedback: None,
+            rated_at: None,
+            cancel_reason: None,
+            cancel_reason_at: None,
+        }.into();
+        pool.push(res_temp.clone());
 
         let (_, driver) = self.assign_reservations_to_strategy(&id_event, strategy, pool, Some(id)).await?;
         if let Some(driver) = driver {
-            let est = driver.estimate_reservation(&reservation)?;
+            let est = driver.estimate_reservation(&res_temp)?;
             Ok(est)
         } else {
-            Ok(self.get_no_drivers_estimation(&reservation))
+            Ok(self.get_no_drivers_estimation())
         }
     }
 
 
     #[doc = "Get an estimation for an event with no drivers"]
-    fn get_no_drivers_estimation(&self, reservation: &Reservation) -> ReservationEstimate {
+    fn get_no_drivers_estimation(&self) -> ReservationEstimate {
         ReservationEstimate {
-            stop_etas: vec![
-                DriverStopEstimation {
-                    stop: reservation.get_driver_stop(0),
-                    eta: 7,
-                },
-                DriverStopEstimation {
-                    stop: reservation.get_driver_stop(1),
-                    eta: 14,
-                },
-            ],
+            time_estimate: TimeEstimate {
+                pickup: Duration::minutes(7),  // TODO: figure out a better way to do this
+                arrival: Duration::minutes(14) // there shouldn't be a lot of people who get
+                                               // this estimation tho
+            },
             queue_position: 0,
         }
     }
@@ -424,22 +467,20 @@ impl MarketEvent {
     #[async_recursion::async_recursion]
     async fn assign_reservations_to_strategy(&self, id_event: &Uuid, strategy: StrategyEstimations, pool: Vec<Reservation>, target_id: Option<Uuid>) -> MarketResult<(StrategyEstimations, Option<DriverStrategyEstimations>)> {
         if pool.is_empty() { return Ok((strategy, None)) };
-        let mut new_pool = pool.clone();
+        let mut new_pool = pool;
+        let next = new_pool.remove(0);
 
-        if let Some((driver, reservation)) = self.get_driver_rider_pair(strategy.clone(), pool).await? {
-
-            let pool_idx = new_pool.iter().enumerate().find_map(|(idx, res)| if res.id.eq(&reservation.id) { Some(idx) } else { None }).unwrap();
-            new_pool.remove(pool_idx);
-
-            let new_driver = driver.add_reservation(reservation.clone());
+        if let Some(shortest) = strategy.shortest()? {
+            let driver = shortest.strip_estimates()
+                .add_reservation(next.clone());
 
             let mut strategy_new = strategy.strip_estimates();
-            strategy_new.drivers.insert(driver.id, new_driver.clone());
+            strategy_new.drivers.insert(driver.id, driver.clone());
 
             let estimated = self.calculate_strategy_estimate(id_event, strategy_new).await?;
 
             match target_id {
-                Some(id) if reservation.id.eq(&id) => {
+                Some(id) if next.id.eq(&id) => {
                     let driver = estimated.driver(&driver.id)?;
                     return Ok((estimated, Some(driver)));
                 }
@@ -448,72 +489,17 @@ impl MarketEvent {
             
             let result = self.assign_reservations_to_strategy(id_event, estimated, new_pool, target_id).await?;
             Ok(result)
-            
-
         } else {
             Ok((strategy, None))
         }
     }
 
-    async fn get_driver_rider_pair(&self, strategy: StrategyEstimations, pool: Vec<Reservation>) -> MarketResult<Option<(DriverStrategy, Reservation)>> {
-        let epsilon = 1e-9;
-
-        let mut scores: Vec<(DriverPairScore, IdEventDriver, Uuid)> = Vec::new();
-        for (id, driver) in &strategy.drivers {
-            for reservation in &pool {
-                let score = self.get_driver_pair_score(&strategy, driver, reservation).await?;
-                scores.push((score, *id, reservation.id));
-            }
-        }
-        scores.sort_by(|(a, _, _), (b, _, _)| if (a - b).abs() < epsilon {
-            std::cmp::Ordering::Equal
-        } else if a < b {
-            std::cmp::Ordering::Greater
-        } else {
-            std::cmp::Ordering::Less
-        });
-        println!("Scores:");
-        for (score, id_driver, id_reservation) in &scores {
-            let res = &pool.iter().find(|res| res.id.eq(&id_reservation)).unwrap().stops.first().unwrap().address_main;
-            println!("{} {} {} ({})", score, id_driver, res, id_reservation);
-
-        }
-        println!("");
-        let (_, id_driver, id_reservation) = scores.remove(0);
-        let driver = strategy.driver(&id_driver)?.strip_estimates();
-        let reservation = pool.iter().find(|res| res.id.eq(&id_reservation)).unwrap();
-        Ok(Some((driver, reservation.clone())))
-    }
-
-    async fn get_driver_pair_score(&self, strategy: &StrategyEstimations, driver: &DriverStrategyEstimations, reservation: &Reservation) -> MarketResult<DriverPairScore> {
-
-        let driver_location = self.cache.get_driver_location(&driver.id)?.ok_or(ErrorMarket::NoDriverLocation)?;
-        let first_stop_location = reservation.stops.first().ok_or(ErrorMarket::InvalidStopTooFew)?.latlng();
-
-        let distance =  driver_location.distance(first_stop_location);
-
-        let current_time = now();
-        let driver_availability_timestamp = current_time + driver.duration();
-        let time_difference = (reservation.made_at as i64 - driver_availability_timestamp as i64).abs() as u64;
-
-        let waiting_time = current_time.saturating_sub(reservation.made_at);
-
-        // Constants for maximum scores
-        let max_time_difference_score = 50.0;
-        let max_waiting_time_score = 50.0;
-
-        let time_difference_score = max_time_difference_score - time_difference as f64;
-        let waiting_time_score = (max_waiting_time_score * (1.0 + waiting_time as f64).ln() / 2f64.ln()).min(max_waiting_time_score);
-
-        let score = time_difference_score.max(0.0) + waiting_time_score + driver.id as f64;
-
-        Ok(score as f64)
-    }
-    
 
     #[doc = "Get a pool of all the unaccepted reservations for an event"]
     pub async fn get_pool(&self, id_event: &Uuid) -> MarketResult<Vec<Reservation>> {
-        let reservations = self.db.send(ReservationsInPool { id_event: *id_event }).await??;
+        let reservations = self.db.send(ReservationsInPool { id_event: *id_event }).await??.into_iter()
+            .map(|res| res.into())
+            .collect();
         Ok(reservations)
     }
 
@@ -590,74 +576,6 @@ impl MarketEvent {
             Ok(strategy)
         })).await?;
         Ok(())
-    }
-
-    #[doc = "Convert a form reservation into a reservation input. This will geocode all the place ids, or get the event location."]
-    pub async fn process_reserveration_input(&self, id_event: &Uuid, input: &FormReservation) -> MarketResult<ReservationInput> {
-        match (input.stops.first(), input.stops.last()) {
-            (Some(first), Some(last)) if first.id.eq(&last.id) => Err(ErrorMarket::InvalidStopTooFew)?,
-            (Some(first), Some(last)) => {
-                let property_opt = self.get_property(id_event).await?;
-
-                let mut stops = Vec::new();
-                let mut is_event_used = false;
-
-                for stop in &input.stops {
-                    let stop = match (&stop.location, &property_opt, is_event_used) {
-                        (Some(location), _, _) => self.process_reservation_stop_location(id_event, stop.clone(), location).await?,
-                        (None, Some(property), false) if stop.id.eq(&first.id) || stop.id.eq(&last.id) => {
-                            is_event_used = true;
-                            self.process_reservation_stop_event(id_event, &stop, property).await?
-                        },
-                        (None, Some(_), true) => Err(ErrorMarket::InvalidStopEventStopAlreadyUsed)?,
-                        (None, Some(_), false) => Err(ErrorMarket::InvalidStopInvalidEventLocation)?,
-                        (None, None, _) => Err(ErrorMarket::InvalidStopEventUsedForEventWithoutProperty)?
-                    };
-                    stops.push(stop)
-                }
-
-                let result = ReservationInput {
-                    passenger_count: input.passenger_count,
-                    stops, 
-                };
-                Ok(result)
-            },
-            _ => Err(ErrorMarket::InvalidStopTooFew)?,
-        }
-    }
-
-    async fn process_reservation_stop_location(&self, _id_event: &Uuid, stop: FormReservationStop, location: &FormReservationStopLocation) -> MarketResult<ReservationInputStop> {
-        let address = self.geocoder.geocode_location(&location).await;
-        Ok(ReservationInputStop {
-            id: stop.id,
-            stop_order: stop.stop_order,
-            is_event_location: false,
-            lat: location.location.lat,
-            lng: location.location.lng,
-            lat_address: location.location.lat,
-            lng_address: location.location.lng,
-            address_main: address.main,
-            address_sub: address.sub,
-            place_id: location.place_id.clone(),
-        })
-    }
-
-    async fn process_reservation_stop_event(&self, id_event: &Uuid, stop: &FormReservationStop, property: &OrgLocation) -> MarketResult<ReservationInputStop> {
-        let location = self
-            .get_property_location_cached(id_event).await?;
-
-        Ok(ReservationInputStop {
-            id: stop.id,
-            stop_order: stop.stop_order,
-            is_event_location: true,
-            lat: location.lat,
-            lng: location.lng,
-            lat_address: location.lat,
-            lng_address: location.lng,
-            address_main: property.label.clone(),
-            address_sub: String::from(""),
-            place_id: None,
-        })
     }
 }
 

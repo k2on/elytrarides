@@ -55,15 +55,7 @@ pub enum ErrorMarket {
     #[error("No vehicle for this driver")]
     NoDriverVehicle,
     #[error("Bad Value")]
-    BadValue(String),
-    #[error("You can not set an event location for an event without a property")]
-    InvalidStopEventUsedForEventWithoutProperty,
-    #[error("You need at least two stops")]
-    InvalidStopTooFew,
-    #[error("The event should be either the first or last order.")]
-    InvalidStopInvalidEventLocation,
-    #[error("Already used an event stop")]
-    InvalidStopEventStopAlreadyUsed,
+    BadValue(String)
 }
 
 impl From<diesel::result::Error> for ErrorMarket {

@@ -1,5 +1,3 @@
-use std::f64::consts::PI;
-
 // use std::f64::consts::PI;
 use google_maps::prelude::{
    LatLng as GoogleLatLng, Location as GoogleLocation, Prediction
@@ -35,25 +33,25 @@ pub struct LatLng {
     pub lng: f64,
 }
 
-fn to_radians(degrees: f64) -> f64 {
-    degrees * PI / 180.0
-}
+// fn to_radians(degrees: f64) -> f64 {
+//     degrees * PI / 180.0
+// }
 
 impl LatLng {
-    pub(crate) fn distance(&self, other: LatLng) -> f64 {
-        let r = 6371.0; // Earth's radius in km
+    // pub(crate) fn distance(&self, other: LatLng) -> f64 {
+    //     let r = 6371.0; // Earth's radius in km
 
-        let lat1_rad = to_radians(self.lng);
-        let lat2_rad = to_radians(other.lng);
-        let delta_lat = to_radians(other.lng - self.lat);
-        let delta_lon = to_radians(other.lng - self.lng);
+    //     let lat1_rad = to_radians(self.lng);
+    //     let lat2_rad = to_radians(other.lng);
+    //     let delta_lat = to_radians(other.lng - self.lat);
+    //     let delta_lon = to_radians(other.lng - self.lng);
 
-        let a = (delta_lat / 2.0).sin().powi(2)
-            + lat1_rad.cos() * lat2_rad.cos() * (delta_lon / 2.0).sin().powi(2);
-        let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+    //     let a = (delta_lat / 2.0).sin().powi(2)
+    //         + lat1_rad.cos() * lat2_rad.cos() * (delta_lon / 2.0).sin().powi(2);
+    //     let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
 
-        r * c
-    }
+    //     r * c
+    // }
 
     pub fn new(lat: f64, lng: f64) -> Self {
         Self { lat, lng }

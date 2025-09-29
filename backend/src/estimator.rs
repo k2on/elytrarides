@@ -1,9 +1,8 @@
-use std::{sync::Arc, collections::HashMap};
+use std::sync::Arc;
 use actix::prelude::*;
 use chrono::Duration;
 use tokio::spawn;
 use log::{info, error};
-use uuid::Uuid;
 
 use crate::market::{Market, error::ErrorMarket, estimate::driver::stop::{reservation::model::DriverStopEstimationReservation, model::DriverStopEstimation}};
 
@@ -30,8 +29,6 @@ impl Estimator {
             let id_event = event.id;
             info!("Updating event: {}", id_event);
 
-            // We want to update every reservation created for the event
-
             let strategy = market.event.refresh_estimates(&id_event).await?;
 
             if strategy.drivers.is_empty() {
@@ -39,21 +36,28 @@ impl Estimator {
             }
 
             for (_id_driver, driver_strat) in strategy.drivers {
-                let stop_etas: Vec<DriverStopEstimation> = driver_strat.queue.iter().cloned().collect();
+                let mut reservations: Vec<DriverStopEstimationReservation> = driver_strat.queue
+                    .iter()
+                    .filter_map(|stop| if let DriverStopEstimation::Reservation(res) = stop { Some(res.clone()) } else { None })
+                    .collect();
 
-                let mut reservations: HashMap<Uuid, Vec<DriverStopEstimation>> = HashMap::new();
-                for stop in stop_etas {
-                    if let Some(stops) = reservations.get(&stop.stop.id_reservation) {
-                        let mut new_stops = stops.clone();
-                        new_stops.push(stop.clone());
-                        reservations.insert(stop.stop.id_reservation, new_stops);
-                    } else {
-                        reservations.insert(stop.stop.id_reservation, vec![stop]);
+                let arrival_time = match driver_strat.dest {
+                    Some(DriverStopEstimation::Reservation(dest)) => {
+                        reservations.insert(0, dest.clone());
+                        Some(dest.arrival)
+                    }
+                    Some(DriverStopEstimation::Event(event)) => Some(event.arrival),
+                    _ => None
+                };
+
+                if let Some(arrival) = arrival_time {
+                    for (id, _) in &driver_strat.picked_up {
+                        market.messanger.send_reservation_estimate(id, Duration::seconds(0), arrival, 0).await?;
                     }
                 }
 
-                for (idx, (id, etas)) in reservations.iter().enumerate() {
-                    market.messanger.send_reservation_estimate(&id, etas.clone(), idx as i32).await?;
+                for (idx, reservation) in reservations.iter().enumerate() {
+                    market.messanger.send_reservation_estimate(&reservation.id_reservation, reservation.pickup, reservation.arrival, idx as i32).await?;
                 }
 
             }

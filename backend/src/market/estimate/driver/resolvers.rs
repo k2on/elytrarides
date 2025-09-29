@@ -1,9 +1,7 @@
-use std::collections::HashSet;
-
 use juniper::FieldResult;
 use uuid::Uuid;
 
-use crate::graphql::{context::Context, drivers::{Driver, messages::EventDriverGet}, reservations::{Reservation, DBReservation, messages::ReservationsListWithoutStops, ReservationWithoutStops}};
+use crate::graphql::{context::Context, drivers::{Driver, messages::EventDriverGet}};
 
 use super::{model::DriverStrategyEstimations, stop::model::DriverStopEstimation};
 
@@ -24,17 +22,6 @@ impl DriverStrategyEstimations {
 
     fn queue(&self) -> Vec<DriverStopEstimation> {
         self.queue.iter().cloned().collect()
-    }
-
-    async fn reservations(&self, ctx: &Context) -> FieldResult<Vec<ReservationWithoutStops>> {
-        let mut ids: HashSet<Uuid> = self.picked_up.clone().into_keys().collect();
-        if let Some(dest) = &self.dest {
-            ids.insert(dest.stop.id_reservation);
-        }
-        let queue_ids: Vec<Uuid> = self.queue.iter().map(|stop| stop.stop.id_reservation).collect();
-        ids.extend(queue_ids);
-        let reservations = ctx.db.send(ReservationsListWithoutStops { ids: ids.iter().cloned().collect() }).await??;
-        Ok(reservations)
     }
 }
 

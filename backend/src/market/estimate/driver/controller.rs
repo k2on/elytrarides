@@ -49,83 +49,153 @@ impl DriverStrategyEstimations {
 
     #[doc = "Get all the reservations that the driver is sharing locations with"]
     pub fn get_sharing_location_with(&self) -> Vec<Uuid> {
-        let mut ids: HashSet<Uuid> = self.picked_up.keys().cloned().collect();
-        if let Some(dest) = &self.dest {
-            ids.insert(dest.stop.id_reservation);
+        let mut ids: Vec<Uuid> = self.picked_up.keys().cloned().collect();
+        match &self.dest {
+            Some(DriverStopEstimation::Reservation(dest)) => ids.push(dest.id_reservation),
+            Some(DriverStopEstimation::Event(_)) => ids.append(&mut self.queue.get_pickup_reservations_from_event()),
+            None => ()
         }
-        ids.extend(self.queue.iter().map(|stop| stop.stop.id_reservation));
-        ids.into_iter().collect()
+        ids
     }
 
-    #[doc = "Get the duration of the driver in seconds"]
-    pub fn duration(&self) -> i32 {
+    #[doc = "Get the duration of the driver"]
+    pub fn duration(&self) -> Duration {
         match (&self.dest, self.queue.last()) {
-            (_, Some(last)) => last.eta,
-            (Some(dest), None) => dest.eta,
-            (None, None) => 0,
+            (_, Some(last)) => last.arrival(),
+            (Some(dest), None) => dest.arrival(),
+            (None, None) => Duration::seconds(0),
         }
     }
 
     #[doc = "Return a reservation estimate for a reservation"]
     pub fn estimate_reservation(&self, reservation: &Reservation) -> MarketResult<ReservationEstimate> {
-        let queue_position = self.get_reservation_queue_position(&reservation.id);
-        let stop_etas = self.get_reservation_stop_etas(&reservation);
+        let est = if reservation.is_dropoff {
+            let pickup = self.to_event_pickup(&reservation.id)?;
+            let arrival = self.to_last_stop(&reservation.id);
+            let queue_position = self.queue_position_dropoff(&reservation.id);
 
-        let est = ReservationEstimate {
-            stop_etas,
-            queue_position,
+            ReservationEstimate {
+                queue_position,
+                time_estimate: TimeEstimate {
+                    pickup,
+                    arrival,
+                }
+            }
+        } else {
+            let pickup = self.to_stop(&reservation.id);
+            let arrival = self.get_event_for_pickup_reservation(&reservation.id).arrival;
+            let queue_position = self.queue_position_pickup(&reservation.id);
+
+            ReservationEstimate {
+                queue_position,
+                time_estimate: TimeEstimate {
+                    pickup,
+                    arrival,
+                }
+            }
         };
         Ok(est)
     }
 
-    #[doc = "Get the queue position for a reservation"]
-    fn get_reservation_queue_position(&self, id_reservation: &Uuid) -> i32 {
-        if self.is_picked_up(id_reservation) { return 0 }
-        match &self.dest {
-            Some(dest) if dest.stop.id_reservation.eq(&id_reservation) => return 0,
-            _ => ()
-        }
-        let mut reservation_ids: HashSet<Uuid> = self.get_picked_up_ids().iter().cloned().collect();
-        for stop in self.queue.iter() {
-            if stop.stop.id_reservation.eq(&id_reservation) { return reservation_ids.len() as i32 }
-            reservation_ids.insert(stop.stop.id_reservation);
-        }
-        panic!("Reservation not found in queue")
+    #[doc = "Returns whether the current destination is a reservation with id"]
+    fn is_dest_res(&self, id_reservation: &Uuid) -> bool {
+        matches!(&self.dest, Some(DriverStopEstimation::Reservation(res)) if res.id_reservation.eq(id_reservation))
     }
 
-    #[doc = "Get the arrival times of all the stops for a reservation"]
-    fn get_reservation_stop_etas(&self, reservation: &Reservation) -> Vec<DriverStopEstimation> {
-        reservation.stops
-            .iter()
-            .map(|stop| {
-                let is_stop_in_queue = self.queue.iter().any(|driver_stop| driver_stop.stop.id_stop.eq(&stop.id));
-                let eta = match &self.dest {
-                    Some(dest) if !is_stop_in_queue && !dest.stop.id_stop.eq(&stop.id) => 0,
-                    Some(dest) if dest.stop.id_stop.eq(&stop.id) => dest.eta,
-                    _ => self.queue.iter().find_map(|driver_stop| if driver_stop.stop.id_stop.eq(&stop.id) { Some(driver_stop.eta) } else { None }).expect("Stop not found in queue")
-                };
+    #[doc = "Get the time till the driver arrives at an event for a dropoff reservation"]
+    fn to_event_pickup(&self, id_reservation: &Uuid) -> MarketResult<Duration> {
+        if self.is_dest_res(id_reservation) { return Ok(Duration::seconds(0)) }
+        let reservation_stop_idx = self.queue.idx_of_reservation(id_reservation);
+        let stop_before_reservation = reservation_stop_idx.and_then(|idx| self.queue.get_stop_before(idx));
+        match (reservation_stop_idx, &self.dest, stop_before_reservation) {
+            (Some(0), Some(DriverStopEstimation::Event(event)), _) => Ok(event.arrival),
+            (Some(0), _, _) => unreachable!("Reservation has queue idx 0, but dest is not event"),
+            (_, _, Some(DriverStopEstimation::Event(event))) => Ok(event.arrival),
+            (_, Some(DriverStopEstimation::Event(event)), _) => Ok(event.arrival),
+            _ => Err(ErrorMarket::ReservationNotInStrategy)
+        }
+    }
 
-                DriverStopEstimation {
-                    stop: stop.to_driver_stop(reservation.passenger_count),
-                    eta,
-                }
-            })
-            .collect()
+    #[doc = "Get the event stop for a pickup reservation"]
+    fn get_event_for_pickup_reservation(&self, id_reservation: &Uuid) -> DriverStopEstimationEvent {
+        let is_picked_up = self.is_picked_up(id_reservation);
+        match (is_picked_up, &self.dest) {
+                (true, Some(DriverStopEstimation::Event(event))) => event.clone(),
+                (true, _) => self.queue.next_event().expect("Event not found"),
+                (false, Some(DriverStopEstimation::Reservation(res))) if res.id_reservation.eq(id_reservation) => self.queue.next_event().expect("Event not found"),
+                (false, _) => self.queue.get_next_event_after_reservation(id_reservation).expect("Event not found"),
+            }
+    }
+
+    #[doc = "Get the time till the driver arrives at the stop for a pickup reservation"]
+    fn to_stop(&self, id_reservation: &Uuid) -> Duration {
+        let stop_reservation = self.queue.get_reservation(id_reservation);
+        match (&self.picked_up.contains_key(id_reservation), &self.dest, stop_reservation) {
+            (true, _, _) => Duration::seconds(0),
+            (_, Some(DriverStopEstimation::Reservation(res)), _) if res.id_reservation.eq(&id_reservation) => res.pickup,
+            (_, _, Some(stop)) => stop.pickup,
+            _ => panic!("Reservation not in queue")
+        }
+    }
+
+    #[doc = "Get thet time till the driver arrives at the last stop for a dropoff reservation"]
+    fn to_last_stop(&self, id_reservation: &Uuid) -> Duration {
+        let mut reservation_stops = Vec::new();
+        match &self.dest {
+            Some(DriverStopEstimation::Reservation(res)) if res.id_reservation.eq(&id_reservation) => { reservation_stops.push(res.clone()) },
+            _ => ()
+        };
+        self.queue.iter().for_each(|stop| match stop {
+            DriverStopEstimation::Reservation(res) if res.id_reservation.eq(&id_reservation) => { reservation_stops.push(res.clone()); },
+            _ => ()
+        });
+        let last = reservation_stops.last().expect("Reservation not found in queue or dest");
+        last.pickup
+    }
+
+    #[doc = "Return how many reservations are in front of the pickup reservation"]
+    fn queue_position_pickup(&self, id_reservation: &Uuid) -> i32 {
+        if self.is_picked_up(id_reservation) { return 0 }
+        let mut reservations: HashSet<Uuid> = self.picked_up.keys().cloned().collect();
+        match &self.dest {
+            Some(DriverStopEstimation::Reservation(res)) if res.id_reservation.eq(&id_reservation) => return 0,
+            Some(DriverStopEstimation::Reservation(res)) => { reservations.insert(res.id_reservation); },
+            _ => ()
+        }
+
+        for stop in self.queue.iter() {
+            match stop {
+                DriverStopEstimation::Reservation(res) if res.id_reservation.eq(&id_reservation) => return reservations.len() as i32,
+                DriverStopEstimation::Reservation(res) => { reservations.insert(res.id_reservation); },
+                _ => ()
+            }
+        }
+        panic!("Reservation not found in queue of dest")
+    }
+
+    #[doc = "Return how many reservations are in front of the dropoff reservation"]
+    fn queue_position_dropoff(&self, id_reservation: &Uuid) -> i32 {
+        self.queue_position_pickup(id_reservation)
+    }
+
+    #[doc = "Get the reservations that are getting picked up"]
+    pub fn get_pickup_reservations(&self) -> MarketResult<Vec<Uuid>> {
+        match &self.dest {
+            None => Err(ErrorMarket::NoDest),
+            Some(DriverStopEstimation::Reservation(res)) => Ok(vec![res.id_reservation]),
+            Some(DriverStopEstimation::Event(_)) => Ok(self.queue.get_pickup_reservations_from_event()),
+            // Some(DriverStopEstimation::Event(_)) => Ok(Vec::new())
+        }
     }
 
     #[doc = "Get the reservations that are getting dropped off"]
-    pub fn get_picked_up_ids(&self) -> Vec<Uuid> {
+    pub fn get_dropoff_reservations(&self) -> Vec<Uuid> {
         self.picked_up.keys().cloned().collect()
     }
 
     #[doc = "Return whether or not the driver has reservations picked up, or in their queue or dest"]
     pub fn is_empty(&self) -> bool {
         self.picked_up.is_empty() && self.dest.is_none() && self.queue.is_empty()
-    }
-
-    #[doc = "Return wheather or not the driver has picked up a stop for a reservation"]
-    pub fn is_picked_up_stop_for_reservation(&self, id: Uuid) -> bool {
-        self.get_picked_up_ids().contains(&id)
     }
 }
 

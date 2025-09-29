@@ -1,9 +1,9 @@
 use chrono::Duration;
 use google_maps::{prelude::{
     GoogleMapsClient, TravelMode,
-}};
+}, PlaceType};
 
-use crate::{graphql::{reservations::{FormReservation, stops::model::{FormReservationStop, FormReservationStopLocation}}, geo::model::LatLng}, market::{error::ErrorMarket, types::MarketResult, strategy::driver::stop::reservation::location::model::Address}};
+use crate::{graphql::{reservations::{FormReservation, FormReservationGeocoded, stops::model::FormReservationStop, FormReservationStopGeocoded}, geo::model::LatLng}, market::{error::ErrorMarket, types::MarketResult, strategy::driver::stop::reservation::location::model::Address}};
 
 
 use async_trait::async_trait;
@@ -21,20 +21,46 @@ impl Geocoder for GeocoderGoogle {
         Box::new(self.clone())
     }
 
-    async fn geocode_location(&self, location: &FormReservationStopLocation) -> Address {
-        match &location.place_id {
-            Some(id) => match self.geocode_place(&id).await {
-                Ok(address) => address,
-                Err(_) => Address {
-                    main: location.address.clone(),
-                    sub: String::from("")
+    async fn geocode_form(&self, form: &FormReservation) -> MarketResult<FormReservationGeocoded> {
+        let tmp: Vec<_> = form.stops
+            .iter()
+            .map(|stop| async move {
+                let address = if stop.place_id != "" {
+                    match self.geocode_place(&stop.place_id).await {
+                        Ok(address) => address,
+                        Err(_err) => Address::new(stop.address.clone(), String::new()),
+                    }
+                } else {
+                    Address::new(stop.address.clone(), String::new())
+                };
+                Ok((stop.clone(), address.clone()))
+            })
+            .collect();
+
+        let results: Vec<MarketResult<(FormReservationStop, Address)>> = futures::future::join_all(tmp).await;
+
+        let stops = results.iter().try_fold(Vec::new(), |mut acc, result| {
+            match &result {
+                Ok((stop, address)) => {
+                    let stop_geocoded = FormReservationStopGeocoded {
+                        address: address.clone(),
+                        location: stop.latlng(),
+                        place_id: stop.place_id.clone(),
+                    };
+                    acc.push(stop_geocoded);
+                    Ok(acc)
                 }
+                Err(e) => Err(e.clone())
             }
-            None => Address {
-                main: location.address.clone(),
-                sub: String::from("")
-            }
-        }
+        })?;
+
+        let form_geocoded = FormReservationGeocoded {
+            stops,
+            passenger_count: form.passenger_count,
+            is_dropoff: form.is_dropoff,
+        };
+        Ok(form_geocoded)
+
     }
 
     async fn estimate(&self, from: LatLng, to: LatLng) -> MarketResult<Duration> {

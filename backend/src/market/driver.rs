@@ -3,7 +3,7 @@ use kv::Store;
 use log::warn;
 use uuid::Uuid;
 
-use crate::{db_util::DBActor, graphql::{drivers::{Driver, messages::{EventDriverGet, EventDriverFind}, DriverWithVehicle}, geo::model::LatLng, reservations::{Reservation, messages::{ReservationAssignDriver, ReservationConfirmPickup, ReservationConfirmDropoff, ReservationGet, ReservationCompleteStop, ReservationComplete, ReservationStopConfirmArrival}, ReservationWithoutStops}, users::{messages::UserGet, User}}, types::phone::Phone, market::{error::ErrorMarket, estimate::driver::stop::model::DriverStopEstimation}};
+use crate::{db_util::DBActor, graphql::{drivers::{Driver, messages::{EventDriverGet, EventDriverFind}, DriverWithVehicle}, geo::model::LatLng, reservations::{Reservation, messages::{ReservationAssignDriver, ReservationConfirmPickup, ReservationConfirmDropoff, ReservationGet, ReservationConfirmArrival}}, users::{messages::UserGet, User}}, types::phone::Phone, market::{error::ErrorMarket, estimate::driver::stop::model::DriverStopEstimation}};
 
 use super::{types::MarketResult, event::MarketEvent, messanger::Messanger, strategy::{model::IdEventDriver, driver::model::DriverStrategy}, estimate::driver::model::DriverStrategyEstimations, pusher::Pushers};
 
@@ -75,9 +75,7 @@ impl MarketDriver {
         let reservation = self.db.send(ReservationGet { id: id_reservation.to_owned() }).await??;
         if reservation.id_driver.is_some() { return Err(ErrorMarket::HasDriver); }
 
-        self.db.send(ReservationAssignDriver { id: id_reservation.to_owned(), id_driver: id_driver.to_owned() }).await??;
-        let reservation: Reservation = self.db.send(ReservationGet { id: *id_reservation }).await??;
-        // we need to get the stops in the reservation
+        let reservation: Reservation = self.db.send(ReservationAssignDriver { id: id_reservation.to_owned(), id_driver: id_driver.to_owned() }).await??.into();
         self.messanger.send_reservation_update(reservation.clone()).await?;
         let pusher = self.push.get(&reservation);
         match self.db.send(UserGet { phone: reservation.reserver.clone() }).await {
@@ -103,27 +101,44 @@ impl MarketDriver {
     #[doc = "Confirm the arrival of the driver to their destination"]
     pub async fn arrive(&self, id_event: &Uuid, id_driver: &IdEventDriver) -> MarketResult<DriverStrategyEstimations> {
         let driver = self.get_driver(id_event, id_driver).await?;
-        let dest = driver.dest.clone().ok_or(ErrorMarket::NoDest)?;
+        match &driver.dest {
+            Some(DriverStopEstimation::Reservation(stop)) => {
+                let reservation = self.db.send(ReservationConfirmArrival { id: stop.id_reservation }).await??.into();
+                let pusher = self.push.get(&reservation);
+                match self.db.send(UserGet { phone: reservation.reserver.clone() }).await {
+                    Ok(Ok(user)) => {
+                        if let Err(err) = pusher.send_driver_arrival(&reservation, &user.into()).await {
+                            warn!("Could not send text, got error: {}", err)
+                        }
+                    },
+                    _ => warn!("Could not find user")
+                }
 
-        let id_reservation = dest.stop.id_reservation;
-        let id_stop = dest.stop.id_stop;
-
-        self.db.send(ReservationStopConfirmArrival { id_reservation, id_stop }).await??;
-        let reservation = self.db.send(ReservationGet { id: id_reservation }).await??;
-        self.messanger.send_reservation_update(reservation.clone()).await?;
-
-        let should_notify_rider = !driver.is_picked_up_stop_for_reservation(id_reservation);
-        if should_notify_rider {
-            let pusher = self.push.get(&reservation);
-            match self.db.send(UserGet { phone: reservation.reserver.clone() }).await {
-                Ok(Ok(user)) => {
-                    pusher.send_driver_arrival(&reservation, &user.into()).await?;
-                },
-                _ => warn!("Could not find user")
-            }
+                self.messanger.send_reservation_update(reservation).await?;
+                Ok(driver)
+            },
+            Some(DriverStopEstimation::Event(_)) => {
+                let driver = self.get_driver(&id_event, &id_driver).await?;
+                let ids = driver.queue.get_pickup_reservations_from_event();
+                for id in ids {
+                    let reservation = self.db.send(ReservationConfirmArrival { id }).await??.into();
+                    let pusher = self.push.get(&reservation);
+                    match self.db.send(UserGet { phone: reservation.reserver.clone() }).await {
+                        Ok(Ok(user)) => {
+                            if let Err(err) = pusher.send_driver_arrival(&reservation, &user.into()).await {
+                                warn!("Could not send text, got error: {}", err)
+                            }
+                        },
+                        _ => warn!("Could not find user")
+                    }
+                    self.messanger.send_reservation_update(reservation).await?;
+                }
+                Ok(driver)
+            },
+            None => Err(ErrorMarket::NoDest),
         }
-        Ok(driver)
     }
+
 
     #[doc = "Get a driver for an event"]
     async fn get_driver(&self, id_event: &Uuid, id_driver: &IdEventDriver) -> MarketResult<DriverStrategyEstimations> {
@@ -131,36 +146,26 @@ impl MarketDriver {
     }
 
     #[doc = "Confirm that a driver has picked up their passengers"]
-    pub async fn next(&self, id_event: &Uuid, id_driver: &IdEventDriver) -> MarketResult<DriverStrategyEstimations> {
+    pub async fn pickup(&self, id_event: &Uuid, id_driver: &IdEventDriver) -> MarketResult<DriverStrategyEstimations> {
         let driver = self.get_driver(&id_event, id_driver).await?;
-        let dest = driver.dest.clone().ok_or(ErrorMarket::NoDest)?;
-
-        self.db.send(ReservationCompleteStop { id_stop: dest.stop.id_stop }).await??;
-
-        if let None = driver.queue.first() {
-            for id in &driver.get_picked_up_ids() {
-                self.db.send(ReservationComplete { id: id.clone() }).await??;
-            }
-
+        let id_reservations = driver.get_pickup_reservations()?;
+        let driver_strategy = self.event.update_driver_strategy(&id_event, id_driver, Box::new(move |driver: DriverStrategy| { driver.pickup() })).await?;
+        for id in id_reservations {
+            let reservation = self.db.send(ReservationConfirmPickup { id }).await??.into();
+            self.messanger.send_reservation_update(reservation).await?;
         }
-
-        let driver_strategy = self.event.update_driver_strategy(&id_event, id_driver, Box::new(move |driver: DriverStrategy| { driver.next() })).await?;
-
-        let reservation = self.db.send(ReservationGet { id: dest.stop.id_reservation }).await??;
-        self.messanger.send_reservation_update(reservation).await?;
-
         Ok(driver_strategy)
     }
 
-    // #[doc = "Confirm that a driver has dropped off their passengers"]
-    // pub async fn dropoff(&self, id_event: &Uuid, id_driver: &IdEventDriver) -> MarketResult<DriverStrategyEstimations> {
-    //     let driver = self.get_driver(&id_event, id_driver).await?;
-    //     let id_reservations = driver.get_dropoff_reservations();
-    //     let driver_strategy = self.event.update_driver_strategy(&id_event, id_driver, Box::new(move |driver: DriverStrategy| { driver.dropoff() })).await?;
-    //     for id in id_reservations {
-    //         let reservation = self.db.send(ReservationConfirmDropoff { id }).await??.into();
-    //         self.messanger.send_reservation_update(reservation).await?;
-    //     }
-    //     Ok(driver_strategy)
-    // }
+    #[doc = "Confirm that a driver has dropped off their passengers"]
+    pub async fn dropoff(&self, id_event: &Uuid, id_driver: &IdEventDriver) -> MarketResult<DriverStrategyEstimations> {
+        let driver = self.get_driver(&id_event, id_driver).await?;
+        let id_reservations = driver.get_dropoff_reservations();
+        let driver_strategy = self.event.update_driver_strategy(&id_event, id_driver, Box::new(move |driver: DriverStrategy| { driver.dropoff() })).await?;
+        for id in id_reservations {
+            let reservation = self.db.send(ReservationConfirmDropoff { id }).await??.into();
+            self.messanger.send_reservation_update(reservation).await?;
+        }
+        Ok(driver_strategy)
+    }
 }

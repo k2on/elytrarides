@@ -6,8 +6,8 @@ use crate::{graphql::{
     drivers::{messages::{EventDriversList, EventDriverFind}, model::Driver},
     locations::{messages::OrgLocationGet, OrgLocation},
     orgs::{messages::{OrganizationGet, OrganizationCollegeGet}, model::Organization},
-    reservations::{messages::ReservationsList, Reservation, FormReservation, stops::model::{FormLatLng, FormReservationStop}, AvaliableReservation}, colleges::model::College, vehicles::{Vehicle, messages::VehiclesList}
-}, market::{types::ReservationEstimate, estimate::{model::StrategyEstimations, driver::stop::model::DriverStopEstimation}, strategy::model::IdEventDriver}};
+    reservations::{messages::ReservationsList, Reservation, FormReservation, stops::model::{FormLatLng, FormReservationStop}}, colleges::model::College, vehicles::{Vehicle, messages::VehiclesList}
+}, market::{types::ReservationEstimate, estimate::model::StrategyEstimations, strategy::model::IdEventDriver}};
 
 use super::{messages::EventGet, Event};
 
@@ -243,7 +243,7 @@ impl Event {
         Ok(pool)
     }
 
-    async fn avaliable_reservation(&self, ctx: &Context, id_driver: IdEventDriver) -> FieldResult<Option<AvaliableReservation>> {
+    async fn avaliable_reservation(&self, ctx: &Context, id_driver: IdEventDriver) -> FieldResult<Option<Reservation>> {
         if !ctx.validate_is_driver_for_event(&self.id, &id_driver).await {
             return Err(FieldError::new(
                 "Unauthorized",

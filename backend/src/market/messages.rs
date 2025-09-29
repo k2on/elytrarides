@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::graphql::{geo::model::LatLng, context::Context, reservations::Reservation};
 
-use super::{types::ReservationEstimate, strategy::model::IdEventDriver, estimate::{model::StrategyEstimations, driver::stop::model::DriverStopEstimation}};
+use super::{types::ReservationEstimate, strategy::model::IdEventDriver, estimate::model::StrategyEstimations};
 
 #[derive(Debug, Serialize, Deserialize, Clone, GraphQLUnion)]
 #[graphql(Context = Context)]
@@ -23,15 +23,14 @@ pub struct MessageDriverLocation {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, GraphQLObject)]
-#[graphql(Context = Context)]
 pub struct MessageReservationEstimation {
     pub estimate: ReservationEstimate,
 }
 
 impl MessageMarket {
-    pub fn new_reservation_estimate(stop_etas: Vec<DriverStopEstimation>, queue_position: i32) -> Self {
+    pub fn new_reservation_estimate(pickup: Duration, arrival: Duration, queue_position: i32) -> Self {
         Self::ReservationEstimation(MessageReservationEstimation {
-            estimate: ReservationEstimate::new(stop_etas, queue_position)
+            estimate: ReservationEstimate::new(pickup, arrival, queue_position)
         })
     }
 

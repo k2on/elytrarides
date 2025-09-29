@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::{graphql::{context::Context, users::User, events::{Event, messages::EventGet}, drivers::{Driver, DriverWithVehicle}}, market::types::ReservationEstimate, types::phone::Phone};
 
-use super::{Reservation, messages::{ReservationGetByReserver, ReservationGet, ReservationRate, ReservationGiveCancelReason}, FormReservation, stops::model::ReservationStop, feedback::model::Feedback, ReservationStatus, DBReservation, ReservationWithoutStops};
+use super::{Reservation, messages::{ReservationGetByReserver, ReservationGet, ReservationRate, ReservationGiveCancelReason}, FormReservation, stops::model::ReservationStop, feedback::model::Feedback};
 
 pub struct ReservationQuery;
 
@@ -11,14 +11,6 @@ pub struct ReservationQuery;
 impl Reservation {
     fn id(&self) -> &Uuid {
         &self.id
-    }
-
-    fn status(&self) -> i32 {
-        self.status.int()
-    }
-
-    fn driver_assigned_at(&self) -> Option<i32> {
-        self.driver_assigned_at
     }
 
     fn id_event(&self) -> &Uuid {
@@ -49,8 +41,8 @@ impl Reservation {
         &self.passenger_count
     }
 
-    fn is_cancelled(&self) -> bool {
-        matches!(self.status, ReservationStatus::CANCELLED)
+    fn is_cancelled(&self) -> &bool {
+        &self.is_cancelled
     }
 
     fn cancelled_at(&self) -> &Option<i32> {
@@ -71,12 +63,20 @@ impl Reservation {
         Ok(driver)
     }
 
-    fn is_complete(&self) -> bool {
-        matches!(self.status, ReservationStatus::COMPLETE)
+    fn is_complete(&self) -> &bool {
+        &self.is_complete
+    }
+
+    fn complete_at(&self) -> &Option<i32> {
+        &self.complete_at
     }
 
     fn stops(&self) -> &Vec<ReservationStop> {
-        &self.stops
+        &self.stops.get_stops()
+    }
+
+    fn is_dropoff(&self) -> &bool {
+        &self.is_dropoff
     }
 
     async fn estimate(&self, ctx: &Context) -> FieldResult<ReservationEstimate> {
@@ -84,6 +84,10 @@ impl Reservation {
             .estimate(&self).await?;
 
         Ok(estimate)
+    }
+
+    fn is_collected(&self) -> bool {
+        self.stops.get_stops().iter().any(|stop| stop.is_complete)
     }
 
     async fn is_picked_up(&self, ctx: &Context) -> FieldResult<bool> {
@@ -98,98 +102,13 @@ impl Reservation {
         }
     }
 
-    fn rating(&self) -> &Option<i32> {
-        &self.rating
+    fn is_driver_arrived(&self) -> &bool {
+        &self.is_driver_arrived
     }
 
-    fn feedback(&self) -> &Option<Feedback> {
-        &self.feedback
+    fn driver_arrived_at(&self) -> &Option<i32> {
+        &self.driver_arrived_at
     }
-
-    fn rated_at(&self) -> &Option<i32> {
-        &self.rated_at
-    }
-
-    fn cancel_reason(&self) -> &Option<i32> {
-        &self.cancel_reason
-    }
-
-    fn cancel_reason_at(&self) -> &Option<i32> {
-        &self.cancel_reason_at
-    }
-}
-
-#[juniper::graphql_object(Context = Context)]
-impl ReservationWithoutStops {
-    fn id(&self) -> &Uuid {
-        &self.id
-    }
-
-    fn id_event(&self) -> &Uuid {
-        &self.id_event
-    }
-
-    async fn event(&self, ctx: &Context) -> FieldResult<Event> {
-        let db = ctx.db.clone();
-        let result = db.send(EventGet { id: self.id_event }).await
-            .map_err(|_| FieldError::new("Error getting event", graphql_value!({ "internal_error": "Err getting event" })))??;
-        let event: Event = result.into();
-        Ok(event)
-    }
-
-    fn made_at(&self) -> &i32 {
-        &self.made_at
-    }
-
-    fn reserver_phone(&self) -> &Phone {
-        &self.reserver
-    }
-
-    async fn reserver(&self, ctx: &Context) -> FieldResult<User> {
-        Ok(ctx.user_get(&self.reserver).await)
-    }
-
-    fn passenger_count(&self) -> &i32 {
-        &self.passenger_count
-    }
-
-    fn is_cancelled(&self) -> bool {
-        matches!(self.status, ReservationStatus::CANCELLED)
-    }
-
-    fn cancelled_at(&self) -> &Option<i32> {
-        &self.cancelled_at
-    }
-
-    fn id_driver(&self) -> &Option<i32> {
-        &self.id_driver
-    }
-
-    async fn driver(&self, ctx: &Context) -> FieldResult<Option<DriverWithVehicle>> {
-        let driver = if let Some(id_driver) = self.id_driver {
-            let driver = ctx.market.driver.get_with_vehicle(&id_driver).await?;
-            Some(driver)
-        } else {
-            None
-        };
-        Ok(driver)
-    }
-
-    fn is_complete(&self) -> bool {
-        matches!(self.status, ReservationStatus::COMPLETE)
-    }
-
-    // async fn is_picked_up(&self, ctx: &Context) -> FieldResult<bool> {
-    //     match self.id_driver {
-    //         Some(_) => {
-    //             let is_picked_up = ctx.market.reservation
-    //                 .is_picked_up(&self).await?;
-
-    //             Ok(is_picked_up)
-    //         }
-    //         None => Ok(false)
-    //     }
-    // }
 
     fn rating(&self) -> &Option<i32> {
         &self.rating
@@ -203,6 +122,14 @@ impl ReservationWithoutStops {
         &self.rated_at
     }
 
+    fn est_pickup(&self) -> &i32 {
+        &self.est_pickup
+    }
+
+    fn est_dropoff(&self) -> &i32 {
+        &self.est_dropoff
+    }
+
     fn cancel_reason(&self) -> &Option<i32> {
         &self.cancel_reason
     }
@@ -211,7 +138,6 @@ impl ReservationWithoutStops {
         &self.cancel_reason_at
     }
 }
-
 
 impl ReservationQuery{
     pub fn new() -> Self {
@@ -277,16 +203,16 @@ impl ReservationMutation {
     }
 
     #[graphql(description = "Rate a reservation")]
-    async fn rate(ctx: &Context, id: Uuid, rating: i32, feedback: i32) -> FieldResult<DBReservation> {
+    async fn rate(ctx: &Context, id: Uuid, rating: i32, feedback: i32) -> FieldResult<Reservation> {
         if !ctx.validate_owns_reservation(id).await { return Err(FieldError::new("Not authorized", graphql_value!({ "internal_error": "Not authorized" }))) }
-        let reservation = ctx.db.send(ReservationRate { id, rating, feedback }).await??;
+        let reservation: Reservation = ctx.db.send(ReservationRate { id, rating, feedback }).await??.into();
         Ok(reservation)
     }
 
     #[graphql(description = "Give a reason for the cancellation")]
-    async fn give_cancel_reason(ctx: &Context, id: Uuid, reason: i32) -> FieldResult<DBReservation> {
+    async fn give_cancel_reason(ctx: &Context, id: Uuid, reason: i32) -> FieldResult<Reservation> {
         if !ctx.validate_owns_reservation(id).await { return Err(FieldError::new("Not authorized", graphql_value!({ "internal_error": "Not authorized" }))) }
-        let reservation = ctx.db.send(ReservationGiveCancelReason { id, reason }).await??;
+        let reservation: Reservation = ctx.db.send(ReservationGiveCancelReason { id, reason }).await??.into();
         Ok(reservation)
     }
 }

@@ -1,49 +1,50 @@
 use actix::Message;
 use uuid::Uuid;
-use crate::{types::phone::Phone, market::estimate::driver::stop::model::DriverStopEstimation};
+use crate::types::phone::Phone;
 
-use super::{model::{DBReservation, Reservation, ReservationWithoutStops}, stops::model::DBReservationStop, FormReservation, ReservationInput};
+use super::{model::DBReservation, FormReservation, FormReservationGeocoded};
 use diesel::QueryResult;
 
 #[derive(Message)]
-#[rtype(result = "QueryResult<Reservation>")]
+#[rtype(result = "QueryResult<DBReservation>")]
 pub struct ReservationGet {
     pub id: Uuid,
 }
 
 #[derive(Message)]
-#[rtype(result = "QueryResult<ReservationWithoutStops>")]
-pub struct ReservationGetWithoutStops {
-    pub id: Uuid,
-}
-
-#[derive(Message)]
-#[rtype(result = "QueryResult<Reservation>")]
+#[rtype(result = "QueryResult<DBReservation>")]
 pub struct ReservationGetByReserver {
     pub phone: Phone,
     pub id_event: Uuid,
 }
 
 #[derive(Message)]
-#[rtype(result = "QueryResult<Vec<Reservation>>")]
+#[rtype(result = "QueryResult<Vec<DBReservation>>")]
+pub struct ReservationsListByReserver {
+    pub phone: Phone,
+}
+
+#[derive(Message)]
+#[rtype(result = "QueryResult<Vec<DBReservation>>")]
 pub struct ReservationsList {
     pub id_event: Uuid,
 }
 
 #[derive(Message)]
-#[rtype(result = "QueryResult<Vec<Reservation>>")]
+#[rtype(result = "QueryResult<Vec<DBReservation>>")]
 pub struct ReservationsInPool {
     pub id_event: Uuid,
 }
 
 #[derive(Message)]
-#[rtype(result = "QueryResult<Reservation>")]
+#[rtype(result = "QueryResult<DBReservation>")]
 pub struct ReservationReserve {
     pub id: Uuid,
     pub id_event: Uuid,
     pub phone: Phone,
-    pub input: ReservationInput,
-    pub stop_etas: Vec<DriverStopEstimation>,
+    pub form: FormReservationGeocoded,
+    pub est_pickup: i32,
+    pub est_dropoff: i32,
 }
 
 #[derive(Message)]
@@ -85,16 +86,11 @@ pub struct ReservationConfirmDropoff {
 }
 
 #[derive(Message)]
-#[rtype(result = "QueryResult<DBReservationStop>")]
-pub struct ReservationCompleteStop {
-    pub id_stop: Uuid,
-}
-
-#[derive(Message)]
 #[rtype(result = "QueryResult<DBReservation>")]
-pub struct ReservationComplete {
+pub struct ReservationConfirmArrival {
     pub id: Uuid,
 }
+
 
 #[derive(Message)]
 #[rtype(result = "QueryResult<usize>")]
@@ -116,30 +112,3 @@ pub struct ReservationGiveCancelReason {
     pub id: Uuid,
     pub reason: i32,
 }
-
-#[derive(Message)]
-#[rtype(result = "QueryResult<Vec<DBReservationStop>>")]
-pub struct ReservationGetStops {
-    pub id: Uuid,
-}
-
-#[derive(Message)]
-#[rtype(result = "QueryResult<Vec<DBReservationStop>>")]
-pub struct ReservationStopsListByReserver {
-    pub phone: Phone,
-    pub filter_no_place_id: bool,
-}
-
-#[derive(Message)]
-#[rtype(result = "QueryResult<Vec<ReservationWithoutStops>>")]
-pub struct ReservationsListWithoutStops {
-    pub ids: Vec<Uuid>
-}
-
-#[derive(Message)]
-#[rtype(result = "QueryResult<DBReservationStop>")]
-pub struct ReservationStopConfirmArrival {
-    pub id_reservation: Uuid,
-    pub id_stop: Uuid,
-}
-

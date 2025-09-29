@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{graphql::{
     context::Context,
-    memberships::{messages::UserMemberships, model::Membership}, geo::model::SearchResult, reservations::{messages::ReservationStopsListByReserver, stops::model::ReservationStop, Reservation}, media::messages::MediaGet,
+    memberships::{messages::UserMemberships, model::Membership}, geo::model::SearchResult, reservations::{messages::ReservationsListByReserver, stops::model::ReservationStop, Reservation}, media::messages::MediaGet,
 }, types::phone::Phone};
 
 use super::{
@@ -92,8 +92,13 @@ impl User {
         }
 
         let db = ctx.db.clone();
-        let mut stops: Vec<ReservationStop> = db.send(ReservationStopsListByReserver { phone: self.phone.clone(), filter_no_place_id: true }).await??.into_iter().map(ReservationStop::from).collect();
+        let reservations: Vec<Reservation> = db.send(ReservationsListByReserver { phone: self.phone.clone() }).await??.into_iter().map(Reservation::from).collect();
 
+        let mut stops: Vec<ReservationStop> = reservations.iter()
+            .flat_map(|res| res.stops.get_stops()
+                      .iter()
+                      .filter(|stop| !stop.place_id.is_empty()).cloned())
+            .collect();
         let common = stops.iter()
             .fold(HashMap::new(), |mut acc, stop| {
                 *acc.entry(stop.place_id.clone()).or_insert(0) += 1;
@@ -113,9 +118,9 @@ impl User {
         stops.truncate(5);
 
         let locations = stops.iter().map(|stop| SearchResult {
-            main: stop.address_main.clone(),
-            sub: stop.address_sub.clone(),
-            place_id: stop.place_id.clone().expect("Recent stop had a null place id"),
+            main: stop.address.main.clone(),
+            sub: stop.address.sub.clone(),
+            place_id: stop.place_id.clone(),
         }).collect();
 
         Ok(locations)

@@ -1,17 +1,14 @@
-use chrono::Duration;
-use juniper::GraphQLObject;
+use juniper::GraphQLUnion;
 use serde::{Serialize, Deserialize};
-use uuid::Uuid;
 
-use crate::{market::strategy::driver::stop::model::DriverStop, graphql::context::Context};
+use crate::graphql::context::Context;
 
+use super::{reservation::model::DriverStopEstimationReservation, event::model::DriverStopEstimationEvent};
 
-#[serde_with::serde_as]
-#[derive(Debug, Serialize, Deserialize, Clone, GraphQLObject)]
+#[derive(Debug, Serialize, Deserialize, Clone, GraphQLUnion)]
 #[graphql(Context = Context)]
-pub struct DriverStopEstimation {
-    pub stop: DriverStop,
-    #[doc = "Estimated time of arival in seconds"]
-    pub eta: i32
+pub enum DriverStopEstimation {
+    Reservation(DriverStopEstimationReservation),
+    Event(DriverStopEstimationEvent),
 }
 

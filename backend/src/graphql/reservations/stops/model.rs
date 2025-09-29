@@ -5,125 +5,91 @@ use diesel::{
     expression::AsExpression,
     pg::Pg,
     serialize::{IsNull, ToSql},
-    sql_types::Text, Queryable, Insertable, AsChangeset
+    sql_types::Text,
 };
-use juniper::{GraphQLInputObject, GraphQLObject, GraphQLEnum, GraphQLUnion};
+use juniper::{GraphQLInputObject, GraphQLObject};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::{graphql::geo::model::LatLng, market::{util::now, strategy::driver::stop::{reservation::location::model::Address, model::DriverStop}}, schema::reservation_stops};
+use crate::{graphql::{geo::model::LatLng, reservations::FormReservationStopGeocoded}, market::strategy::driver::stop::reservation::location::model::Address};
 
 #[derive(Debug, Serialize, Deserialize, FromSqlRow, AsExpression, Clone)]
 #[diesel(sql_type = Text)]
 pub struct ReservationStops(pub Vec<ReservationStop>);
 
-#[derive(Queryable, Debug, Serialize, Insertable, AsChangeset)]
-#[diesel(table_name=reservation_stops)]
-pub struct DBReservationStop {
-    pub id: Uuid,
-    pub id_reservation: Uuid,
-    pub stop_order: i32,
-    pub eta: i32,
-    pub created_at: i32,
-    pub updated_at: Option<i32>,
-    pub complete_at: Option<i32>,
-    pub driver_arrived_at: Option<i32>,
-    pub is_event_location: bool,
-    pub lat: f64,
-    pub lng: f64,
-    pub lat_address: f64,
-    pub lng_address: f64,
-    pub address_main: String,
-    pub address_sub: String,
-    pub place_id: Option<String>,
-}
+impl ReservationStops {
+    pub fn new(stops: Vec<FormReservationStopGeocoded>) -> Self {
+        let stops = 
+            stops.iter()
+                .map(|s| ReservationStop::new(s.clone()))
+                .collect::<Vec<ReservationStop>>();
+        Self(stops)
+    }
 
-impl From<DBReservationStop> for ReservationStop {
-    fn from(db_stop: DBReservationStop) -> Self {
-        Self {
-            id: db_stop.id,
-            id_reservation: db_stop.id_reservation,
-            stop_order: db_stop.stop_order,
-            eta: db_stop.eta,
-            created_at: db_stop.created_at,
-            updated_at: db_stop.updated_at,
-            complete_at: db_stop.complete_at,
-            driver_arrived_at: db_stop.driver_arrived_at,
-            is_event_location: db_stop.is_event_location,
-            lat: db_stop.lat,
-            lng: db_stop.lng,
-            lat_address: db_stop.lat_address,
-            lng_address: db_stop.lng_address,
-            address_main: db_stop.address_main,
-            address_sub: db_stop.address_sub,
-            place_id: db_stop.place_id,
-        }
+    pub fn get_stops(&self) -> &Vec<ReservationStop> {
+        &self.0
+    }
+
+    pub fn get_stops_mut(&mut self) -> &Vec<ReservationStop> {
+        &self.0
     }
 }
 
+impl ToSql<Text, Pg> for ReservationStops {
+    fn to_sql<'b>(
+        &'b self,
+        out: &mut diesel::serialize::Output<'b, '_, Pg>,
+    ) -> diesel::serialize::Result {
+        let s = serde_json::to_string(&self.0).unwrap();
+        out.write_all(s.as_bytes())?;
+        Ok(IsNull::No)
+    }
+}
+
+impl FromSql<Text, Pg> for ReservationStops {
+    fn from_sql(bytes: diesel::backend::RawValue<'_, Pg>) -> diesel::deserialize::Result<Self> {
+        let s = std::str::from_utf8(bytes.as_bytes()).unwrap();
+        let v = serde_json::from_str(s).unwrap();
+        Ok(ReservationStops(v))
+    }
+}
 
 #[derive(Debug, Serialize, Clone, Deserialize, PartialEq, GraphQLObject)]
 pub struct ReservationStop {
-    pub id: Uuid,
-    pub id_reservation: Uuid,
-    pub stop_order: i32,
-    pub eta: i32,
-    pub created_at: i32,
-    pub updated_at: Option<i32>,
+    pub is_complete: bool,
     pub complete_at: Option<i32>,
-    pub driver_arrived_at: Option<i32>,
-    pub is_event_location: bool,
-    pub lat: f64,
-    pub lng: f64,
-    pub lat_address: f64,
-    pub lng_address: f64,
-    pub address_main: String,
-    pub address_sub: String,
-    pub place_id: Option<String>,
+    pub location_lat: f64,
+    pub location_lng: f64,
+    pub address: Address,
+    pub place_id: String,
 }
 
 impl ReservationStop {
-    pub fn new(id_reservation: Uuid, stop: ReservationInputStop) -> Self {
+    pub fn new(stop: FormReservationStopGeocoded) -> Self {
         Self {
-            id: stop.id,
-            id_reservation,
-            stop_order: stop.stop_order,
-            eta: 0,
-            created_at: now(),
-            updated_at: None,
+            is_complete: false,
             complete_at: None,
-            driver_arrived_at: None,
-            is_event_location: stop.is_event_location,
-            lat: stop.lat,
-            lng: stop.lng,
-            lat_address: stop.lat_address,
-            lng_address: stop.lng_address,
-            address_main: stop.address_main,
-            address_sub: stop.address_sub,
+            location_lat: stop.location.lat,
+            location_lng: stop.location.lng,
+            address: stop.address,
             place_id: stop.place_id,
         }
     }
 
     pub fn latlng(&self) -> LatLng {
         LatLng {
-            lat: self.lat,
-            lng: self.lng,
-        }
-    }
-
-    pub fn to_driver_stop(&self, passengers: i32) -> DriverStop {
-        DriverStop {
-            id_stop: self.id,
-            id_reservation: self.id_reservation,
-            is_event_location: self.is_event_location,
-            lat: self.lat,
-            lng: self.lng,
-            address_main: self.address_main.clone(),
-            address_sub: self.address_sub.clone(),
-            passengers,
+            lat: self.location_lat,
+            lng: self.location_lng,
         }
     }
 }
+
+#[derive(Debug, GraphQLInputObject, Clone)]
+pub struct FormReservationStop {
+    pub location: FormLatLng,
+    pub place_id: String,
+    pub address: String,
+}
+
 
 // We need a FormLatLng because IG you can't have a GraphQLObject and GraphQLInputObject on the
 // same struct
@@ -158,42 +124,12 @@ impl FormLatLng {
 
 }
 
-#[derive(Debug, Clone)]
-pub struct ReservationInputStop {
-    pub id: Uuid,
-    pub stop_order: i32,
-    pub is_event_location: bool,
-    pub lat: f64,
-    pub lng: f64,
-    pub lat_address: f64,
-    pub lng_address: f64,
-    pub address_main: String,
-    pub address_sub: String,
-    pub place_id: Option<String>,
-}
-
-#[derive(Debug, GraphQLInputObject, Clone)]
-#[doc = "The input type for a stop of a reservation. If location is null, then it is treated as a event location"]
-pub struct FormReservationStop {
-    pub id: Uuid,
-    pub stop_order: i32,
-    pub location: Option<FormReservationStopLocation>,
-}
-
-#[derive(Debug, GraphQLInputObject, Clone)]
-pub struct FormReservationStopLocation {
-    pub location: FormLatLng,
-    pub place_id: Option<String>,
-    pub address: String,
-}
-
-
-pub enum InputReservationStopType {
-    Location(InputReservationStopLocation),
-    Event,
-}
-
-pub struct InputReservationStopLocation {
-    pub latlng: LatLng,
+impl FormReservationStop {
+    pub fn latlng(&self) -> LatLng {
+        LatLng {
+            lat: self.location.lat,
+            lng: self.location.lng,
+        }
+    }
 }
 

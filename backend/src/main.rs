@@ -8,19 +8,19 @@ use actix_web::{web::Data, App, HttpServer};
 use dotenv::dotenv;
 use google_maps::GoogleMapsClient;
 
-use backend::db_util::{get_pool, AppState, DBActor};
+use nujade_backend::db_util::{get_pool, AppState, DBActor};
 
-use backend::estimator::Estimator;
-use backend::market::Market;
-use backend::sms::ClientTwilio;
-use backend::graphql::handlers::{graphql, graphql_playground, subscriptions};
-use backend::graphql::create_schema;
+use nujade_backend::estimator::Estimator;
+use nujade_backend::market::Market;
+use nujade_backend::sms::ClientTwilio;
+use nujade_backend::graphql::handlers::{graphql, graphql_playground, subscriptions};
+use nujade_backend::graphql::create_schema;
 
 
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    println!("Starting backend");
+    println!("Starting nujade backend");
     std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
@@ -61,7 +61,7 @@ async fn main() -> std::io::Result<()> {
                     .route(web::post().to(graphql))
                     .route(web::get().to(graphql)),
             )
-            .configure(backend::upload::register_urls)
+            .configure(nujade_backend::upload::register_urls)
             .route("/playground", web::get().to(graphql_playground))
             .app_data(Data::new(AppState {
                 schema: schema.clone(),

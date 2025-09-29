@@ -162,13 +162,13 @@ impl MarketEventCache {
     }
 
     #[doc = "Get an updated estimate for a driver, this will be None if it is out of date"]
-    pub fn get_estimate_driver(&self, id_event: &Uuid, driver_strategy: &DriverStrategy) -> MarketResult<Option<i32>> {
-        let key = format!("{}-{}", driver_strategy.id, driver_strategy.clone().dest.unwrap().id_stop);
+    pub fn get_estimate_driver(&self, id_event: &Uuid, driver_strategy: &DriverStrategy) -> MarketResult<Option<Duration>> {
+        let key = format!("{}-{}", driver_strategy.id, driver_strategy.clone().dest.unwrap().key());
         let ests = self.get_estimates_drivers(id_event)?;
         let est = ests
             .and_then(|ests| ests.drivers.get(&key).cloned())
             .and_then(|est| if est.should_update() { None } else { Some(est) })
-            .map(|est| est.duration.num_seconds() as i32);
+            .map(|est| est.duration);
         Ok(est)
     }
 
@@ -180,10 +180,10 @@ impl MarketEventCache {
     }
 
     #[doc = "Update a driver estimation"]
-    pub fn update_estimate_driver(&self, id_event: &Uuid, driver_strategy: &DriverStrategy, estimate: i32) -> MarketResult<()> {
-        let key = format!("{}-{}", driver_strategy.id, driver_strategy.clone().dest.unwrap().id_stop);
+    pub fn update_estimate_driver(&self, id_event: &Uuid, driver_strategy: &DriverStrategy, estimate: Duration) -> MarketResult<()> {
+        let key = format!("{}-{}", driver_strategy.id, driver_strategy.clone().dest.unwrap().key());
         let mut ests = self.get_estimates_drivers(id_event)?.unwrap_or(TimeEstimatesDrivers::new());
-        ests.drivers.insert(key, CachedEstimate::new(Duration::seconds(estimate as i64)));
+        ests.drivers.insert(key, CachedEstimate::new(estimate));
         self.set_estimates_drivers(id_event, ests)?;
         Ok(())
     }
@@ -223,19 +223,19 @@ impl MarketEventCache {
     }
 
     #[doc = "Get an estimate between two stops"]
-    pub fn get_estimate_between_stops(&self, id_event: &Uuid, from: &DriverStop, to: &DriverStop) -> MarketResult<Option<i32>> {
+    pub fn get_estimate_between_stops(&self, id_event: &Uuid, from: &DriverStop, to: &DriverStop) -> MarketResult<Option<Duration>> {
         let key = from.key_with(to);
         let stops = self.get_estimates_stops(id_event)?;
         let est = stops.and_then(|stops| stops.connections.get(&key).cloned());
-        let duration = est.map(|est| est.duration.num_seconds() as i32);
+        let duration = est.map(|est| est.duration);
         Ok(duration)
     }
 
     #[doc = "Update a stop estimate"]
-    pub fn update_estimate_stop(&self, id_event: &Uuid, from: &DriverStop, to: &DriverStop, est: i32) -> MarketResult<()> {
+    pub fn update_estimate_stop(&self, id_event: &Uuid, from: &DriverStop, to: &DriverStop, est: Duration) -> MarketResult<()> {
         let key = from.key_with(to);
         let mut ests = self.get_estimates_stops(id_event)?.unwrap_or(TimeEstimatesStops::new());
-        ests.connections.insert(key, CachedEstimate::new(Duration::seconds(est as i64)));
+        ests.connections.insert(key, CachedEstimate::new(est));
         self.set_estimates_stops(id_event, ests)?;
         Ok(())
     }

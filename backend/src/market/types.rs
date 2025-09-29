@@ -4,9 +4,7 @@ use chrono::Duration;
 use juniper::{GraphQLObject, FieldError, graphql_object};
 use serde::{Serialize, Deserialize};
 
-use crate::graphql::context::Context;
-
-use super::{messages::MessageMarket, error::ErrorMarket, strategy::{model::IdEventDriver, driver::stop::reservation::model::DriverStopReservation}, estimate::driver::stop::model::DriverStopEstimation};
+use super::{messages::MessageMarket, error::ErrorMarket, strategy::{model::IdEventDriver, driver::stop::reservation::model::DriverStopReservation}};
 
 
 #[serde_with::serde_as]
@@ -33,16 +31,18 @@ impl TimeEstimate {
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, GraphQLObject)]
-#[graphql(Context = Context)]
 pub struct ReservationEstimate {
-    pub stop_etas: Vec<DriverStopEstimation>,
+    pub time_estimate: TimeEstimate,
     pub queue_position: i32,
 }
 
 impl ReservationEstimate {
-    pub fn new(stop_etas: Vec<DriverStopEstimation>, queue_position: i32) -> Self {
+    pub fn new(pickup: Duration, arrival: Duration, queue_position: i32) -> Self {
         Self {
-            stop_etas,
+            time_estimate: TimeEstimate {
+                pickup,
+                arrival,
+            },
             queue_position
         }
     }

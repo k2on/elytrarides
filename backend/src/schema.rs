@@ -136,44 +136,28 @@ diesel::table! {
 }
 
 diesel::table! {
-    reservation_stops (id) {
-        id -> Uuid,
-        id_reservation -> Uuid,
-        stop_order -> Int4,
-        eta -> Int4,
-        created_at -> Int4,
-        updated_at -> Nullable<Int4>,
-        complete_at -> Nullable<Int4>,
-        driver_arrived_at -> Nullable<Int4>,
-        is_event_location -> Bool,
-        lat -> Float8,
-        lng -> Float8,
-        lat_address -> Float8,
-        lng_address -> Float8,
-        address_main -> Text,
-        address_sub -> Text,
-        place_id -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
     reservations (id) {
         made_at -> Int4,
         reserver -> Text,
         passenger_count -> Int4,
+        is_cancelled -> Bool,
+        is_complete -> Bool,
+        complete_at -> Nullable<Int4>,
         cancelled_at -> Nullable<Int4>,
         id_driver -> Nullable<Int4>,
+        stops -> Text,
+        is_dropoff -> Bool,
         id -> Uuid,
         id_event -> Uuid,
+        is_driver_arrived -> Bool,
+        driver_arrived_at -> Nullable<Int4>,
+        est_pickup -> Int4,
+        est_dropoff -> Int4,
         rating -> Nullable<Int4>,
         feedback -> Nullable<Int4>,
         rated_at -> Nullable<Int4>,
         cancel_reason -> Nullable<Int4>,
         cancel_reason_at -> Nullable<Int4>,
-        status -> Int4,
-        driver_assigned_at -> Nullable<Int4>,
-        initial_passenger_count -> Int4,
-        actual_passenger_count_given_at -> Nullable<Int4>,
     }
 }
 
@@ -243,7 +227,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     points,
     points_assignment,
     points_request,
-    reservation_stops,
     reservations,
     user_group_memberships,
     user_groups,

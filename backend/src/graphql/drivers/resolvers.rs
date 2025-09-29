@@ -1,7 +1,7 @@
 use juniper::{FieldResult, FieldError, graphql_value};
 use uuid::Uuid;
 
-use crate::{graphql::{context::Context, users::User, vehicles::{Vehicle, messages::VehicleGet}, reservations::stops::model::FormLatLng, events::{Event, messages::EventGet}}, types::phone::Phone, market::{estimate::driver::model::DriverStrategyEstimations, strategy::model::IdEventDriver}};
+use crate::{graphql::{context::Context, users::User, vehicles::{Vehicle, messages::VehicleGet}, reservations::stops::model::FormLatLng, events::{Event, messages::EventGet}}, types::phone::Phone, market::estimate::driver::model::DriverStrategyEstimations};
 
 use super::{model::Driver, DriverWithVehicle};
 
@@ -144,10 +144,18 @@ impl DriverMutation {
         Ok(driver_strat)
     }
 
-    #[graphql(description = "Complete the current stop")]
-    async fn next(ctx: &Context, id_event: Uuid, id_driver: IdEventDriver) -> FieldResult<DriverStrategyEstimations> {
+    #[graphql(description = "Confirm driver pickup")]
+    async fn confirm_pickup(ctx: &Context, id_event: Uuid, id_driver: i32) -> FieldResult<DriverStrategyEstimations> {
         if !ctx.validate_is_driver_for_event(&id_event, &id_driver).await { return Err(FieldError::new("Not authorized", graphql_value!({ "internal_error": "Not authorized" }))) }
-        let driver_strat = ctx.market.driver.next(&id_event, &id_driver).await?;
+        let driver_strat = ctx.market.driver.pickup(&id_event, &id_driver).await?;
         Ok(driver_strat)
     }
+
+    #[graphql(description = "Confirm driver dropoff")]
+    async fn confirm_dropoff(ctx: &Context, id_event: Uuid, id_driver: i32) -> FieldResult<DriverStrategyEstimations> {
+        if !ctx.validate_is_driver_for_event(&id_event, &id_driver).await { return Err(FieldError::new("Not authorized", graphql_value!({ "internal_error": "Not authorized" }))) }
+        let driver_strat = ctx.market.driver.dropoff(&id_event, &id_driver).await?;
+        Ok(driver_strat)
+    }
+
 }

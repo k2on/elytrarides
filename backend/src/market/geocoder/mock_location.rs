@@ -1,4 +1,4 @@
-use crate::{graphql::{geo::model::LatLng, reservations::{stops::model::{FormReservationStop, FormLatLng, FormReservationStopLocation}}}, market::strategy::driver::stop::reservation::location::model::Address};
+use crate::{graphql::{geo::model::LatLng, reservations::{FormReservationStopGeocoded, stops::model::{FormReservationStop, FormLatLng}}}, market::strategy::driver::stop::reservation::location::model::Address};
 
 pub struct MockLocation {
     pub id: &'static str,
@@ -46,15 +46,19 @@ impl MockLocation {
         FormLatLng::new(lat, lng)
     }
 
-    pub fn stop(&self) -> FormReservationStopLocation {
-        FormReservationStopLocation {
-            place_id: Some(self.id.to_owned()),
+    pub fn stop(&self) -> FormReservationStop {
+        FormReservationStop {
+            place_id: self.id.to_owned(),
             address: self.address.to_owned(),
             location: self.latlng(),
         }
     }
 
-    pub fn address(&self) -> Address {
-        Address::new(self.address.to_owned(), "MOCK".to_owned())
+    pub fn geocoded(&self) -> FormReservationStopGeocoded {
+        FormReservationStopGeocoded {
+            address: Address::new(self.address.to_owned(), "MOCK".to_owned()),
+            location: self.latlng().into(),
+            place_id: self.address.to_owned(),
+        }
     }
 }
