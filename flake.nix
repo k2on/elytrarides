@@ -28,7 +28,7 @@
             pname = "elytra-rides-backend";
             version = "0.1.0";
             src = ./backend;
-            cargoHash = "sha256-ABf90XgT0hrQ50JIdboA5EIaEibXb6TwjGkuNCVWLMY=";
+            cargoHash = "sha256-Fd7ttVMn9SO5WLoGA9knGyA99C+YxidVEG7lCclqPG4=";
             nativeBuildInputs = with pkgs; [
               pkg-config
             ];
