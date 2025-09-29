@@ -38,76 +38,59 @@ pub struct DBReservation {
     pub made_at: i32,
     pub reserver: String,
     pub passenger_count: i32,
-    pub is_cancelled: bool,
     pub cancelled_at: Option<i32>,
     pub id_driver: Option<i32>,
-    pub is_complete: bool,
-    pub complete_at: Option<i32>,
-    pub stops: ReservationStops,
-    pub is_dropoff: bool,
     pub id: Uuid,
     pub id_event: Uuid,
-    pub is_driver_arrived: bool,
-    pub driver_arrived_at: Option<i32>,
-    pub est_pickup: i32,
-    pub est_dropoff: i32,
     pub rating: Option<i32>,
     pub feedback: Option<i32>,
     pub rated_at: Option<i32>,
     pub cancel_reason: Option<i32>,
     pub cancel_reason_at: Option<i32>,
+    pub is_cancelled: bool,
+    pub is_complete: bool,
+    pub complete_at: Option<i32>,
+    pub stops: ReservationStops,
+    pub is_dropoff: bool,
+    pub is_driver_arrived: bool,
+    pub driver_arrived_at: Option<i32>,
+    pub est_pickup: i32,
+    pub est_dropoff: i32,
 }
 
 impl
     Queryable<
         (
-            diesel::sql_types::Integer,
-            diesel::sql_types::Text,
-            diesel::sql_types::Integer,
-            diesel::sql_types::Bool,
-            diesel::sql_types::Bool,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
-            diesel::sql_types::Text,
-            diesel::sql_types::Bool,
-            diesel::sql_types::Uuid,
-            diesel::sql_types::Uuid,
-            diesel::sql_types::Bool,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
-            diesel::sql_types::Integer,
-            diesel::sql_types::Integer,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
-            diesel::sql_types::Nullable<diesel::sql_types::Integer>,
+        diesel::sql_types::Integer,           // made_at
+        diesel::sql_types::Text,              // reserver
+        diesel::sql_types::Integer,           // passenger_count
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // cancelled_at
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // id_driver
+        diesel::sql_types::Uuid,              // id
+        diesel::sql_types::Uuid,              // id_event
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // rating
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // feedback
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // rated_at
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // cancel_reason
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // cancel_reason_at
+        diesel::sql_types::Bool,              // is_cancelled
+        diesel::sql_types::Bool,              // is_complete
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // complete_at
+        diesel::sql_types::Text,              // stops
+        diesel::sql_types::Bool,              // is_dropoff
+        diesel::sql_types::Bool,              // is_driver_arrived
+        diesel::sql_types::Nullable<diesel::sql_types::Integer>,  // driver_arrived_at
+        diesel::sql_types::Integer,  // est_pickup
+        diesel::sql_types::Integer,  // est_dropoff
         ),
         Pg,
     > for DBReservation
 {
     type Row = (
-        i32,
-        String,
-        i32,
-        bool,
-        bool,
-        Option<i32>,
-        Option<i32>,
-        Option<i32>,
-        ReservationStops,
-        bool,
-        Uuid,
-        Uuid,
-        bool,
-        Option<i32>,
-        i32,
-        i32,
-        Option<i32>,
-        Option<i32>,
-        Option<i32>,
-        Option<i32>,
-        Option<i32>,
+        i32, String, i32, Option<i32>, Option<i32>, Uuid, Uuid,
+        Option<i32>, Option<i32>, Option<i32>, Option<i32>, Option<i32>,
+        bool, bool, Option<i32>, ReservationStops, bool, bool,
+        Option<i32>, i32, i32,
     );
 
     fn build(row: Self::Row) -> Result<Self, Box<dyn Error + Send + Sync>> {
@@ -115,24 +98,24 @@ impl
             made_at: row.0,
             reserver: row.1,
             passenger_count: row.2,
-            is_cancelled: row.3,
-            is_complete: row.4,
-            complete_at: row.5,
-            cancelled_at: row.6,
-            id_driver: row.7,
-            stops: row.8,
-            is_dropoff: row.9,
-            id: row.10,
-            id_event: row.11,
-            is_driver_arrived: row.12,
-            driver_arrived_at: row.13,
-            est_pickup: row.14,
-            est_dropoff: row.15,
-            rating: row.16,
-            feedback: row.17,
-            rated_at: row.18,
-            cancel_reason: row.19,
-            cancel_reason_at: row.20,
+            cancelled_at: row.3,
+            id_driver: row.4,
+            id: row.5,
+            id_event: row.6,
+            rating: row.7,
+            feedback: row.8,
+            rated_at: row.9,
+            cancel_reason: row.10,
+            cancel_reason_at: row.11,
+            is_cancelled: row.12,
+            is_complete: row.13,
+            complete_at: row.14,
+            stops: row.15,
+            is_dropoff: row.16,
+            is_driver_arrived: row.17,
+            driver_arrived_at: row.18,
+            est_pickup: row.19,
+            est_dropoff: row.20,
         })
     }
 }
