@@ -59,6 +59,29 @@ export function formatTime(d: Date): string {
     return `${hours}:${minutesStr} ${ampm}`;
 }
 
+export function getReservationStatus(res: Reservation, strategy: Strategy | null): ReservationStatus {
+    const isReservationActive = (id: string) => strategy?.drivers.some(d => {
+        if (d.dest?.__typename == "DriverStopEstimationReservation") {
+            if (d.dest.idReservation == id) return true;
+        }
+        for (const stop of d.queue) {
+            if (stop.__typename == "DriverStopEstimationReservation") {
+                if (stop.idReservation == id) return true;
+            }
+        }
+        return false;
+    }) || false;
+
+    return res.isCancelled
+            ? ReservationStatus.CANCELLED
+            : res.isComplete
+            ? ReservationStatus.COMPLETE
+            : res.isCollected || isReservationActive(res.id)
+            ? ReservationStatus.ACTIVE
+            : ReservationStatus.WAITING
+
+}
+
 export function isEventActive(event: Pick<Event, "timeStart" | "timeEnd">): boolean {
     const now = new Date().getTime() / 1000;
     return event.timeStart < now && now < event.timeEnd;

@@ -13,7 +13,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { CarFront, CircleEllipsis, Hourglass, Loader2, Meh } from "lucide-react";
 import { CANCEL_REASONS, CancelReason } from "@/const";
 import { CancelIcon } from "@/components/CancelIcon";
-import { getArrivalDate, getPickupTime } from "@/lib";
 
 const isSMSEnabled = true;
 
@@ -70,9 +69,9 @@ export default function Active() {
 
     function getMessage() {
         if (pickedUp) return `${driverName} is dropping you off!`;
-        if (reservation.stops.at(0)!.driverArrivedAt && !pickedUp) return `${driverName} has arrived, meet them at the pickup spot`;
-        if (driverLocation) return `${driverName} is on the way to ${reservation.stops[0].addressMain}!`;
-        // if (driverLocation) return `${driverName} is picking you up!`;
+        if (reservation.isDriverArrived && !pickedUp) return `${driverName} has arrived, meet them at the pickup spot`;
+        if (driverLocation && !reservation.isDropoff) return `${driverName} is on the way to ${reservation.stops[0].address.main}!`;
+        if (driverLocation) return `${driverName} is picking you up!`;
         if (estimation && !hasDriver && estimation.queuePosition == 0) return "Your up next! Finding a driver...";
         if (estimation && hasDriver) return estimation.queuePosition == 1 ? `${driverName} will pick you up after 1 more person.` : `${driverName} has ${estimation.queuePosition} more people in front of you in the queue.`;
         if (estimation) return estimation.queuePosition == 1 ? "You are behind 1 person in the queue." : `You are behind ${estimation?.queuePosition} people in the queue.`;
@@ -82,9 +81,9 @@ export default function Active() {
     const message = getMessage();
 
     const timestamp = new Date().getTime();
-    const arrivalTime = estimation && getArrivalDate(estimation).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const arrivalTime = estimation && new Date(timestamp + estimation.timeEstimate.arrival * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    const estimationInMinutes = estimation && Math.round((getPickupTime(estimation)) / 60);
+    const estimationInMinutes = estimation && Math.round((pickedUp ? estimation.timeEstimate.arrival : estimation.timeEstimate.pickup) / 60);
 
     const ReasonButton = ({ children, reason }: { reason: CancelReason, children: ReactNode }) => <Button onClick={() => {
         setCancelReason(reason);

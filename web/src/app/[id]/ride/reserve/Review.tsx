@@ -1,27 +1,21 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useState } from "react";
 import { ContextRide, ContextRideDispatch } from "../context";
 import Text from "@/components/Text";
 import View from "@/components/View";
 import Button from "@/components/Button";
-import { ActionType, FormReservationStop, ReservationEstimate, ReservationEstimateWithEta, ReservationType, ReserveLocation, StateReserve, en, useGetEventEstimateQuery, useReserveMutation } from "@/shared";
+import { ActionType, ReservationType, StateReserve, en, useGetEventEstimateQuery, useReserveMutation } from "@/shared";
 import client from "@/client";
 import { v4 as uuidv4 } from "uuid";
 import Back from "@/components/Back";
 import sendEvent, { EVENT_CONFIRM_PIN, EVENT_RESERVE } from "@/app/analytics";
 import Account from "../Account";
 import { AccountAvatar } from "./AccountAvatar";
-import { getArrivalDate, getPickupTime, makeStops } from "@/lib";
-
 
 interface ReviewProps {}
 export default function Review({}: ReviewProps) {
     const { step, locations, reservationType } = useContext(ContextRide)!;
     const { event, estimation, passengers } = step as StateReserve;
     const dispatch = useContext(ContextRideDispatch)!;
-
-    const stops = useMemo(() => {
-        return makeStops(locations, reservationType);
-    }, [locations])
 
     const onBack = () => dispatch({
         type: ActionType.BackFromReview,
@@ -48,7 +42,12 @@ export default function Review({}: ReviewProps) {
             idEvent: event.id,
             form: {
                 passengerCount: passengers,
-                stops,
+                stops: locations.map(location => ({
+                    location: location.location,
+                    placeId: location.placeId,
+                    address: location.main,
+                })),
+                isDropoff: reservationType == ReservationType.DROPOFF
             }
         })
     };
@@ -56,8 +55,9 @@ export default function Review({}: ReviewProps) {
     const { isLoading, error: estimateError } = useGetEventEstimateQuery(client, {
         id: event.id,
         form: {
-            stops,
+            stops: locations.map(loc => ({ location: loc.location, placeId: loc.placeId, address: loc.main })),
             passengerCount: passengers,
+            isDropoff: reservationType == ReservationType.DROPOFF,
         }
     },
     {
@@ -68,8 +68,9 @@ export default function Review({}: ReviewProps) {
 
     const PASSENGER_MAX = 4;
 
-    const eta = estimation && getArrivalDate(estimation).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const min = estimation && Math.round(getPickupTime(estimation) / 60);
+    const timestamp = new Date().getTime();
+    const eta = estimation && new Date(timestamp + estimation.timeEstimate.arrival * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const min = estimation && Math.round(estimation.timeEstimate.pickup / 60);
     const confirmMessage = !estimation ? estimateError ? "" : "Loading..." : `${min} min wait · Arrive at ${eta}`;
 
     return (

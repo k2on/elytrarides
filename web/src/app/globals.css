@@ -162,20 +162,3 @@
 .remove-border * {
     border: none !important;
 }
-
-@keyframes gradient-animation {
-    0% { background-position: 100% 200%; }
-    100% { background-position: 0% 0%; }
-}
-
-.animated-border-left::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 1px;
-    background: linear-gradient(to top, #000, #fff, #000);
-    background-size: 200% 200%;
-    animation: gradient-animation 1s ease infinite;
-}

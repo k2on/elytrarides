@@ -440,7 +440,7 @@ function ScreenMap({ children }: ScreenMapProps) {
                         >
                             <button onClick={marker.onPress}>
                                 <div className="flex items-strech bg-zinc-950">
-                                    {estimation && <MarkerEstimation seconds={getPickupTime(estimation)} />}
+                                    {estimation && <MarkerEstimation seconds={estimation.timeEstimate.pickup} />}
                                     <div className="flex items-center text-white text-lg p-2">
 
                                         {marker.text}

@@ -45,5 +45,4 @@ export enum ReservationStatus {
     ACTIVE,
     COMPLETE,
     CANCELLED,
-    INCOMPLETE,
 }

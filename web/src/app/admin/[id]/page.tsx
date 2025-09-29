@@ -98,7 +98,7 @@ interface EventsTurnout {
     events: GetOrgEventsWithPassengersQuery["orgs"]["get"]["events"]
 }
 const EventsTurnout: FC<EventsTurnout> = ({ events }) => {
-    const max = Math.max(...events.map(e => sum(e.reservations.map(r => r.passengerCount))));
+    const max = Math.max(...events.map(e => sum(e.reservations.filter(r => !r.isDropoff).map(r => r.passengerCount))));
     return <View className="flex flex-col space-y-2">{events.map(event => <EventTurnout event={event} max={max} />)}</View>
 }
 
@@ -107,7 +107,7 @@ interface EventTurnout {
     max: number
 }
 const EventTurnout: FC<EventTurnout> = ({ event, max }) => {
-    const turnout = sum(event.reservations.map(r => r.passengerCount));
+    const turnout = sum(event.reservations.filter(r => !r.isDropoff).map(r => r.passengerCount));
     return <View>
         <View className="flex flex-row">
             <View className="w-full flex items-center">
@@ -137,7 +137,7 @@ function Heatmap() {
 
     const points = useMemo(() => {
         if (!res) return [];
-        const points = res.orgs.get.events.flatMap(e => e.reservations.flatMap(r => r.stops.map(s => ({ lat: s.lat, lng: s.lng }))))
+        const points = res.orgs.get.events.flatMap(e => e.reservations.flatMap(r => r.stops.map(s => ({ lat: s.locationLat, lng: s.locationLng }))))
             .map(p => new google.maps.LatLng(p.lat, p.lng));
 
         if (map) {

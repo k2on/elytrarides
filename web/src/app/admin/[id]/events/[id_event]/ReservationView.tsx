@@ -1,10 +1,11 @@
 import View from "@/components/View";
 import { Button } from "@/components/ui/button";
-import { ArrowDownCircle, ArrowDownToLine, ArrowLeft, ArrowUpToLine, BadgePlus, CheckCircle, CheckCircle2, CheckIcon, Clipboard, Clock, Clock4, HelpCircle, Home, Loader2, MapPin, MoreVertical, PlusCircle, Star, Users2, XCircle, XIcon } from "lucide-react";
+import { ArrowDownCircle, ArrowDownToLine, ArrowLeft, ArrowUpToLine, BadgePlus, CheckCircle, CheckCircle2, Clipboard, Clock4, HelpCircle, Home, MapPin, MoreVertical, PlusCircle, Star, Users2, XCircle } from "lucide-react";
 import { AdminActionType } from "./actions";
-import { FC, useContext } from "react";
+import { useContext } from "react";
 import { ContextAdmin, ContextAdminDispatch } from "./context";
-import { AdminEvent, ReservationStatus } from "./types";
+import { getReservationStatus } from "./util";
+import { ReservationStatus } from "./types";
 import { Badge } from "@/components/ui/badge";
 import ReservationStatusBadge from "./ReservationStatusBadge";
 import { formatPhoneNumber } from "react-phone-number-input";
@@ -13,7 +14,7 @@ import { Timer, formatTime } from "./map/ActiveStop";
 import Text from "@/components/Text";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import { ANONYMOUS_PROFILE_IMAGE, CANCEL_REASONS, MAX_DRIVER_RATING } from "@/const";
+import { CANCEL_REASONS, MAX_DRIVER_RATING } from "@/const";
 import { CancelIcon } from "@/components/CancelIcon";
 
 interface FocusedReservationProps {
@@ -28,19 +29,19 @@ export default function ReservationView({ id }: FocusedReservationProps) {
     const driver = event?.drivers.find(driver => driver.id == reservation.idDriver);
     const reserver = reservation.reserver;
 
+    const status = getReservationStatus(reservation, strategy);
+
     const madeAt = new Date(reservation.madeAt * 1000);
     const cancelledAt = reservation.cancelledAt && new Date(reservation.cancelledAt * 1000);
-    const driverAssignedAt = reservation.driverAssignedAt && new Date(reservation.driverAssignedAt * 1000);
+    const completeAt = reservation.completeAt && new Date(reservation.completeAt * 1000);
+    const arrivedAt = reservation.driverArrivedAt && new Date(reservation.driverArrivedAt * 1000);
 
     const cancelTime = reservation.cancelledAt && formatTime(reservation.cancelledAt - reservation.madeAt);
-
-    const isFirstStopArrived = !!reservation.stops.at(0)?.driverArrivedAt;
-    const isDriverDrivingToFirstStop = reservation.status == ReservationStatus.ACTIVE && !isFirstStopArrived;
+    const completeTime = reservation.completeAt && formatTime(reservation.completeAt - reservation.madeAt);
 
     const onCopy = () => {
         navigator.clipboard.writeText(reservation.id);
         toast({ description: "Reservation ID copied to clipboard" });
-        console.log(reservation);
     }
 
     return <View className="border-b">
@@ -66,40 +67,124 @@ export default function ReservationView({ id }: FocusedReservationProps) {
                 </DropdownMenuContent>
             </DropdownMenu>
         </View>
-        <View className="mx-8 mt-4">
-            <ol className="relative">
-                <li className="pb-2 pl-4">
-                    <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3"><Clock className="w-4 h-4 text-gray-400" /></span>
-                    <span>{madeAt.toLocaleTimeString()}</span>
-                </li>
-                <li className="pb-2 pl-4">
-                    <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3"><Users2 className="w-4 h-4 text-gray-400" /></span>
-                    <span>{reservation.passengerCount} {reservation.passengerCount == 1 ? "passenger" : "passengers"}</span>
-                </li>
-            </ol>
-            <ol className={`relative`}>
-                {(driver && driverAssignedAt)
-                ? <li className={`pl-4 pb-2 relative ${isFirstStopArrived ? "border-l border-green-400" : isDriverDrivingToFirstStop ? "animated-border-left" : ""}`}>
-                    <img className="absolute flex items-center justify-center w-6 h-6 border border-2 border-black bg-black rounded-full -start-3" src={driver.user.imageUrl || ANONYMOUS_PROFILE_IMAGE} />
-                    <View className="flex flex-col">
-                        <span>{driver.user.name} accepted</span>
-                        <span className="text-gray-400">{driverAssignedAt?.toLocaleTimeString()}</span>
-                    </View>
-                </li>
-                : <li className={`pl-4 pb-2`}>
-                    <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3">
-                        <div className="bg-yellow-800 rounded-full p-[2px]"><Loader2 className="w-4 h-4 text-white animate-spin" /></div>
-                    </span>
-                    <View className="flex flex-col">
-                        <span>Waiting for a driver</span>
-                        <span className="text-gray-400">Waited <Timer start={madeAt} /></span>
-                    </View>
-                </li>}
-                {reservation.stops.map((stop, idx) => <ReservationStop reservation={reservation} stop={stop} />)}
-            </ol>
-        </View>
         
         <ol className="relative border-s mx-8 max-w-md mx-auto mt-8">
+            <li className="pb-10 ms-6">            
+                <span className="absolute flex items-center justify-center w-6 h-6 bg-purple-800 rounded-full -start-3">
+                    <BadgePlus className="text-white w-4 h-4" />
+                </span>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-zinc-900 border-b pb-4 mb-4">
+                        <CardTitle className="text-sm font-medium">
+                          {reserver.name} created a {reservation.isDropoff ? "dropoff" : "pickup"} reservation
+                        </CardTitle>
+                        <CardDescription>
+                            {madeAt.toLocaleTimeString()}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ol className="relative">
+                            <li className="pb-2 ms-4">
+                                <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3"><Users2 className="w-4 h-4 text-gray-400" /></span>
+                                <span>{reservation.passengerCount} {reservation.passengerCount == 1 ? "passenger" : "passengers"}</span>
+                            </li>
+                            {reservation.estPickup > 0 && <li className="pb-2 ms-4">
+                                <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3"><Clock4 className="w-4 h-4 text-gray-400" /></span>
+                                <span>~{Math.floor(reservation.estPickup / 60)} min pickup</span>
+                            </li>}
+                            {false && reservation.estDropoff && <li className="pb-2 ms-4">
+                                <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3"><ArrowDownToLine className="w-4 h-4 text-gray-400" /></span>
+                                <span>~{Math.floor(reservation.estDropoff / 60)} min dropoff</span>
+                            </li>}
+                        </ol>
+                        <ol className={`relative border-s ${reservation.isDropoff && "mb-8"}`}>
+                            {reservation.isDropoff && <li className="pb-2 ms-4">
+                                <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3"><Home className="w-4 h-4 text-gray-400" /></span>
+                                <span>Event</span>
+                            </li>}
+                            {reservation.stops.map((stop, idx) => <li className={`ms-4 pb-2 ${idx == reservation.stops.length - 1 && reservation.isDropoff? "h-0" : ""}`}>
+                                <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3"><MapPin className="w-4 h-4 text-gray-400" /></span>
+                                <View className="flex flex-col">
+                                    <span>{stop.address.main}</span>
+                                    <span className="text-gray-400">{stop.address.sub}</span>
+                                </View>
+                            </li>)}
+                            {!reservation.isDropoff && <li className="ms-4">
+                                <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3"><Home className="w-4 h-4 text-gray-400" /></span>
+                                <span>Event</span>
+                            </li>}
+                        </ol>
+                    </CardContent>
+                </Card>
+            </li>
+            {status == ReservationStatus.WAITING && <li className="ms-6 pb-10">            
+                <span className="absolute flex items-center justify-center w-6 h-6 bg-gray-800 rounded-full -start-3">
+                    <Clock4 className="text-white w-4 h-4" />
+                </span>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-zinc-900 border-b pb-4 mb-4">
+                        <CardTitle className="text-sm font-medium">
+                          Waiting for a driver
+                        </CardTitle>
+                        <CardDescription>
+                            
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Text className="text-gray-400">Waited <Timer start={madeAt} /></Text>
+                    </CardContent>
+                </Card>
+            </li>}
+            {reservation.idDriver && driver && <li className="ms-6 pb-10">
+                <span className="absolute flex items-center justify-center w-6 h-6 bg-green-800 rounded-full -start-3">
+                    <CheckCircle2 className="text-white w-4 h-4" />
+                </span>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-zinc-900 border-b pb-4 mb-4">
+                        <CardTitle className="text-sm font-medium">
+                          {driver.user.name} accepted the reservation
+                        </CardTitle>
+                        <CardDescription></CardDescription>
+                    </CardHeader>
+                        <br />
+                </Card>
+            </li>}
+            {arrivedAt && driver && <li className="ms-6 mb-10">            
+                <span className="absolute flex items-center justify-center w-6 h-6 bg-green-800 rounded-full -start-3">
+                    <CheckCircle2 className="text-white w-4 h-4" />
+                </span>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-zinc-900 border-b pb-4 mb-4">
+                        <CardTitle className="text-sm font-medium">
+                          {driver.user.name} arrived at the pickup stop
+                        </CardTitle>
+                        <CardDescription>
+                            {arrivedAt.toLocaleTimeString()}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Text className="text-gray-400">{""}</Text>
+                    </CardContent>
+                </Card>
+            </li>}
+            {completeAt && driver && <li className="ms-6 pb-10">
+                <span className="absolute flex items-center justify-center w-6 h-6 bg-green-800 rounded-full -start-3">
+                    <ArrowDownCircle className="text-white w-4 h-4" />
+                </span>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-zinc-900 border-b pb-4 mb-4">
+                        <CardTitle className="text-sm font-medium">
+                          {driver.user.name} dropped off {reserver.name}
+                        </CardTitle>
+                        <CardDescription>
+                            {completeAt.toLocaleTimeString()}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Text className="text-gray-400">Complete after {completeTime}</Text>
+                    </CardContent>
+                </Card>
+            </li>}
             {cancelledAt && <li className="ms-6 pb-10">
                 <span className="absolute flex items-center justify-center w-6 h-6 bg-red-800 rounded-full -start-3">
                     <XCircle className="text-white w-4 h-4" />
@@ -186,57 +271,4 @@ export default function ReservationView({ id }: FocusedReservationProps) {
             </View>
         </View>**/}
     </View>
-}
-
-type Reservation = AdminEvent["reservations"][number];
-type ReservationStop = Reservation["stops"][number];
-
-interface ReservationStopProps {
-    reservation: Reservation,
-    stop: ReservationStop,
-
-}
-function ReservationStop({ reservation, stop }: ReservationStopProps) {
-    const { strategy } = useContext(ContextAdmin)!;
-
-    const next = reservation.stops.at(stop.stopOrder + 1);
-    const isDriverOnWayToNext = !!stop.completeAt && !!next && !next.driverArrivedAt;
-    const isDriverArrivedAtNext = !!next && next.driverArrivedAt;
-
-    const last = reservation.stops.at(stop.stopOrder - 1);
-    const isLastStopDone = !stop.completeAt && !!last && last.completeAt;
-
-    function Icon() {
-        if (reservation.status == ReservationStatus.CANCELLED || reservation.status == ReservationStatus.INCOMPLETE) {
-            return <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3">
-                <div className="bg-red-600 rounded-full p-[2px]"><XIcon className="w-4 h-4 text-white" /></div>
-            </span>
-        } else if (stop.completeAt) {
-            return <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3">
-                <div className="bg-green-600 rounded-full p-[2px]"><CheckIcon className="w-4 h-4 text-white" /></div>
-            </span>
-        } else if (reservation.status == ReservationStatus.ACTIVE && (isLastStopDone || (stop.stopOrder == 0 && !stop.completeAt))) {
-            return <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3">
-                <div className="bg-yellow-600 rounded-full p-[2px]"><Loader2 className="w-4 h-4 text-white animate-spin" /></div>
-            </span>
-        } else {
-            return <span className="absolute flex items-center justify-center w-6 h-6 bg-black rounded-full -start-3">
-                <div className=" p-[2px]"><MapPin className="w-4 h-4 text-gray-200" /></div>
-            </span>
-        }
-
-    }
-
-
-    return <li className={`pl-4 pb-2 ${isDriverOnWayToNext ? "relative animated-border-left" : isDriverArrivedAtNext ? "border-l border-green-400" : stop.stopOrder > reservation.stops.length ? "border-l" : ""}`}>
-        <Icon />
-        
-        <View className={`flex flex-col`}>
-            <span>{stop.addressMain}</span>
-            <span className="text-gray-400">{stop.addressSub}</span>
-            <span className="text-gray-400">Arrival: {Math.round(stop.eta / 60)} min</span>
-            {stop.driverArrivedAt && <span className="text-gray-400">Arrived: {new Date(stop.driverArrivedAt * 1000).toLocaleTimeString()}</span>}
-            
-        </View>
-    </li>
 }

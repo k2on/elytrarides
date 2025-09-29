@@ -6,7 +6,7 @@ import { CircleF, DirectionsService, GoogleMap, LoadScript, MarkerF, OVERLAY_MOU
 import { useContext, useEffect, useState } from "react";
 import { ContextAdmin, ContextAdminDispatch } from "./context";
 import { useProgrammaticCameraMovement } from "@/components/map/hooks";
-import { getDriverColor } from "./util";
+import { getDriverColor, getReservationStatus } from "./util";
 import ActiveStopView from "./map/ActiveStop";
 import { AdminActionType } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -52,8 +52,8 @@ function getFilteredStops(reservations: Reservation[], filter: ReservationFilter
     return reservations.flatMap(res => res.stops.map(stop => ({
         id_reservation: res.id,
         madeAt: new Date(res.madeAt * 1000),
-        location: { lat: stop.lat, lng: stop.lng },
-        status: res.status,
+        location: { lat: stop.locationLat, lng: stop.locationLng },
+        status: getReservationStatus(res, strategy),
     }))).filter(applyFilter);
 }
 
@@ -121,7 +121,7 @@ export default function Map() {
                 setDirectionsServiceOptions({...directionsServiceOptions, ...{[driver.driver.id]: {
                     requestOptions: {
                         origin: driver.ping.location,
-                        destination: { lat: driver.dest.stop.lat, lng: driver.dest.stop.lng },
+                        destination: driver.dest.__typename == "DriverStopEstimationEvent" ? {lat: location.locationLat, lng: location.locationLng} : driver.dest.location.coords,
                         travelMode: google.maps.TravelMode.DRIVING,
                     },
                     callback: directions_callback(driver.driver.id)
@@ -144,7 +144,7 @@ export default function Map() {
             setIsFreemove(false);
             const bounds = new window.google.maps.LatLngBounds();
 
-            const points: LatLng[] = focusedReservation == null ? [{ lat: location.locationLat, lng: location.locationLng }, ...strategy.drivers.filter(d => d.ping?.location).map(d => d.ping?.location!), ...stops.map(stop => stop.location)] : event.reservations.find(res => res.id == focusedReservation)!.stops.map(stop => ({ lat: stop.lat, lng: stop.lng }));
+            const points: LatLng[] = focusedReservation == null ? [{ lat: location.locationLat, lng: location.locationLng }, ...strategy.drivers.filter(d => d.ping?.location).map(d => d.ping?.location!), ...stops.map(stop => stop.location)] : event.reservations.find(res => res.id == focusedReservation)!.stops.map(stop => ({ lat: stop.locationLat, lng: stop.locationLng }));
 
             if (points.length == 1) {
                 map.setZoom(focusedReservation == null ? 12 : 18);

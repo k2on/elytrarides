@@ -3,10 +3,10 @@ import DataTable from "./all/data-table";
 import { ReservationGroupAll, columns } from "./all/columns";
 import { useContext } from "react";
 import { ContextAdmin, ContextAdminDispatch } from "./context";
+import { getReservationStatus } from "./util";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ManageDrivers from "./Drivers";
 import { AdminActionType } from "./actions";
-import { ReservationStatus } from "./types";
 
 export default function All() {
     const { event, strategy, tab } = useContext(ContextAdmin)!;
@@ -18,12 +18,13 @@ export default function All() {
         madeAt: res.madeAt,
         reserver: res.reserver.phone,
         driver: res.idDriver || 0,
-        status: res.status,
-        wait: res.status == ReservationStatus.CANCELLED
+        status: getReservationStatus(res, strategy),
+        wait: res.isCancelled
             ? res.cancelledAt! - res.madeAt
-            : res.status == ReservationStatus.COMPLETE
-            ? res.stops.at(-1)!.completeAt! - res.madeAt
+            : res.isComplete
+            ? res.completeAt! - res.madeAt
             : now - res.madeAt
+
     })) || [];
 
     return <View>

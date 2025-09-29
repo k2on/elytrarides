@@ -46,7 +46,11 @@ export default function Inactive({ reservation }: InactiveProps) {
                 <View className="text-gray-400">Thank you for using Elytra Rides!</View>
             </View>
             <View className="mt-4">
-            <Button onClick={() => newReservation()} className="w-full bg-purple-800 hover:bg-purple-900 text-white hover:text-gray-200">Make Another Reservation</Button>
+            {reservation.isDropoff ? (
+              <Button onClick={() => newReservation()} className="w-full bg-purple-800 hover:bg-purple-900 text-white hover:text-gray-200">Make Another Reservation</Button>  
+            ) : (
+                <Button onClick={() => newReservation(true)} className="w-full bg-purple-800 hover:bg-purple-900 text-white hover:text-gray-200">Take Me Home</Button>
+            )}
             </View>
         </View>
         <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>

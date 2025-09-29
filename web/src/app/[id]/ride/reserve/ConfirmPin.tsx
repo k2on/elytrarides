@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from "uuid";
 import sendEvent, { EVENT_RESERVE } from "@/app/analytics";
 import Account from "../Account";
 import { AccountAvatar } from "./AccountAvatar";
-import { makeStops } from "@/lib";
 
 export default function ConfirmPin() {
     const { step, locations, reservationType } = useContext(ContextRide)!;
@@ -31,7 +30,12 @@ export default function ConfirmPin() {
             idEvent: event.id,
             form: {
                 passengerCount: passengers,
-                stops: makeStops(locations, reservationType),
+                stops: locations.map(location => ({
+                    location: location.location,
+                    placeId: location.placeId,
+                    address: location.main,
+                })),
+                isDropoff: reservationType == ReservationType.DROPOFF
             }
         })
     };
